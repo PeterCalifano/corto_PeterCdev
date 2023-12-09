@@ -13,6 +13,9 @@ import mathutils
 import sys
 import pickle
 
+# POSSIBLE TO DO: CORTO_GNC_API module containing an improved general purpose interface
+# to use CORTO from any Simulink model (proper interface block required there).
+
 #### (1) STATIC PARAMETERS ####
 
 #NAVCAM

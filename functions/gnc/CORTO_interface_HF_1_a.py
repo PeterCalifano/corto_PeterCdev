@@ -1,7 +1,7 @@
 # This script is used to render the Didymos scene from input transmitted by the milani-gnc prototype.
 # This CORTO interface works by saving the rendered scene from the composite in the "output_path" and sending a ping
-# by TCP to Simulink to close the loop. This model works with the NAVCAM_HF_1_a model, the actual image is not transmitted from Blender to Simulink,
-# instead, it is saved in Blender and read in Simulink.
+# by TCP to Simulink to close the loop. This model works with the NAVCAM_HF_1_a model, the actual image is not transmitted
+# from Blender to Simulink, instead, it is saved in Blender and read in Simulink.
 
 import socket
 import struct

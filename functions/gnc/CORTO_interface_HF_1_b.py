@@ -1,8 +1,8 @@
 # This script is used to render the Didymos scene from input transmitted by the milani-gnc prototype.
 # This CORTO interface works by transmitting directly the image vector to Simulink as seen from the Viewer.
 # Because the input image is sent to Simulink as seen from the viewer node of the composite, the image is encoded in linear space
-# A gamma-correction is applied on Simulink. This model works with the NAVCAM_HF_1_b model, the actual image is transmitted from Blender to Simulink,
-# but it is transmitted encoded in linear space.
+# A gamma-correction is applied on Simulink. This model works with the NAVCAM_HF_1_b model, the actual image
+# is transmitted from Blender to Simulink, but it is transmitted encoded in linear space.
 
 import socket
 import struct

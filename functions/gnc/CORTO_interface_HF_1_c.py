@@ -1,8 +1,8 @@
 # This script is used to render the Didymos scene from input transmitted by the milani-gnc prototype.
 # This CORTO interface works by transmitting directly the image vector to Simulink as loaded from the output_path folder.
 # Because the input image is sent to Simulink as seen from the viewer node of the composite, the image is encoded in linear space
-# A gamma-correction is applied on Simulink. This model works with the NAVCAM_HF_1_b model, the actual image is transmitted from Blender to Simulink,
-# but it is transmitted encoded in linear space.
+# A gamma-correction is applied on Simulink. This model works with the NAVCAM_HF_1_b model, the actual image is transmitted from 
+# Blender to Simulink, but it is transmitted encoded in linear space.
 
 import socket
 import struct
@@ -37,8 +37,12 @@ bpy.context.scene.render.tile_y = 64 # tile size(y)
 output_path = 'C:\\Users\\Pugliatti Mattia\\Documents\\milaniGNC_BUFFER'
 
 n_zfills = 6 #Number of digits used in the image name
+
+# Here starts the flow to make the body creation
+# and positionig automatic for N generic objects in the scene
 model_name_1 = 'D1'
 model_name_2 = 'D2'
+
 sun_energy = 2 #Energy value of the sun-light in Blender
 specular_factor = 0 #Specularity value for the sun-light in Blender
 address = "0.0.0.0"
@@ -104,6 +108,8 @@ def Render(ii):
     bpy.ops.render.render(write_still=1)
     return
 
+# SETUP OBJECTS POSITIONS IN SCENE
+# TODO: MODIFY FOR N-BODIES
 def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
     SUN.location = [0,0,0] # Because in Blender it is indifferent where the sun is located
     CAM.location = [PQ_SC[0], PQ_SC[1], PQ_SC[2]]
@@ -116,6 +122,7 @@ def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
     return
 
 #### (5) ESTABLISH UDP/TCP CONNECTION ####
+# TODO: Learn how to use socket to connect to Simulink
 r = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -128,6 +135,8 @@ s.listen(5)
 print("Waiting for data...\n")
 
 #### (6) RECEIVE DATA AND RENDERING ####
+# INTERFACE DEFINITION: TODO
+
 
 receiving_flag = 1
 ii = 0
