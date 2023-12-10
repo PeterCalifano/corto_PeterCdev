@@ -55,9 +55,11 @@ def read_and_parse_config(filename):
     print('')
     return body, geometry, scene, corto
 
+# ACHTUNG: ALL.txt must be manually modified to select the options
+
 ######[1]  (START) INPUT SECTION (START) [1]######
-filename = '/Users/mattia/Desktop/corto/input/ALL.txt'
-filename = 'ENTER THE PATH where your "ALL.txt" is saved '
+filename = 'C:\\Users\\pietr\\OneDrive - Politecnico di Milano\\PoliMi - LM\\blender4GNC_repo\\corto_PeterCdev\\input\\ALL.txt'
+#filename = 'ENTER THE PATH where your "ALL.txt" is saved '
 ######[1]  (END) INPUT SECTION (END) [1]######
 
 body, geometry, scene, corto = read_and_parse_config(filename)
@@ -105,7 +107,7 @@ elif body['name'] == 'S6_Moon':
     displacemenet_name = 'ldem_16'
     texture_name = 'lroc_color_poles_32k'
 
-#I/O paths
+#I/O pathsSSSSS
 home_path = bpy.path.abspath("//")
 txt_path = os.path.join(home_path, geometry['name'] + '.txt')
 
@@ -155,7 +157,7 @@ bpy.context.scene.cycles.preview_samples = scene['viewSamples']
 ######[3]  EXTRACT DATA FROM TXT [3]######
 
 n_rows = len(open(os.path.join(txt_path)).readlines())
-n_col = 18
+n_col = 18 # HARDCODED: SPLIT is critically dependend on this value!
 
 from_txt = np.zeros((n_rows,n_col))
 

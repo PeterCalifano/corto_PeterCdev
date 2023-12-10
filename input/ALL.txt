@@ -1,10 +1,10 @@
-
-body_name = S1_Eros
+# SELECT SCENARIO BY DELETING '#' FROM LINE
+#body_name = S1_Eros
 #body_name = S2_Itokawa
 #body_name = S4_Bennu
 #body_name = S5_Didymos
 #body_name = S5_Didymos_Milani
-#body_name = S6_Moon
+body_name = S6_Moon
  
 body_num = 1
 
@@ -22,4 +22,4 @@ scene_labelDepth = 0
 scene_labelID = 0
 scene_labelSlopes = 0
 
-corto_savepath = /Users/mattia/Desktop/corto/output
+corto_savepath = C:\Users\pietr\OneDrive - Politecnico di Milano\PoliMi - LM\blender4GNC_repo\corto_PeterCdev\output

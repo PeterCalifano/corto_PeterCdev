@@ -39,5 +39,16 @@ Lastly, the "scenarios" folder contains the .blend, texture, displacement, and .
 # How to run
 
 There are different ways to run a scenario. Let's say you generate your specific .txt with body-camera-Sun poses using the script within "inputGeneration". Then, you have to put your .txt in the folder of the specific scenario you want to render, and then modify the parameters of the "ALL.txt" accordingly. Lastly, you only need to specify the path of the "ALL.txt" in the rendering function.
+To run the scenario, open the .blend file you are interested, go to the scripting tab in Blender, and run the "RenderFromTxt.py" function. Blender will start rendering the scene you have specified with the settings in "ALL.txt" and with the poses in "Cloud_2023_12_06_20_16_48.txt". Alternatively, you can also run the .blend from command window.
 
-To run the scenario, open the .blend file you are interested, go to the scripting tab in Blender, and run the "RenderFromTxt.py" function. Blender will start rendering the scene you have specified with the settings in "ALL.txt" and with the poses in "Cloud_2023_12_06_20_16_48.txt". Alternatively, you can also run the .blend from command window. 
+Preliminary step:
+
+1) Modify the path to "ALL.txt" configuration file.
+
+Method 1 steps:
+
+1) Generate the txt file containing body-camera-Sun poses for the image generation, using "inputGeneration" script.
+2) Move the txt file to the specific scenario directory.
+3) Run the rendering function within Blender console or scripting tab.
+
+
