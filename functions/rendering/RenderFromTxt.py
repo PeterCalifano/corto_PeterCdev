@@ -58,7 +58,7 @@ def read_and_parse_config(filename):
 # ACHTUNG: ALL.txt must be manually modified to select the options
 
 ######[1]  (START) INPUT SECTION (START) [1]######
-filename = 'C:\\Users\\pietr\\OneDrive - Politecnico di Milano\\PoliMi - LM\\blender4GNC_repo\\corto_PeterCdev\\input\\ALL.txt'
+filename = 'C:\\devDir\\corto_PeterCdev\\input\\ALL.txt'
 #filename = 'ENTER THE PATH where your "ALL.txt" is saved '
 ######[1]  (END) INPUT SECTION (END) [1]######
 
