@@ -11,15 +11,15 @@ body_num = 1
 geometry_name = Cloud_2023_12_06_20_16_48
 geometry_ii0 = 0
 
-scene_fov = 10
+scene_fov = 20
 scene_resx = 1024 
-scene_resy = 1024 
+scene_resy = 1024
 scene_encoding = 8 
-scene_rendSamples = 64
-scene_viewSamples = 4
+scene_rendSamples = 128
+scene_viewSamples = 64
 scene_scattering = 0
 scene_labelDepth = 0
 scene_labelID = 0
 scene_labelSlopes = 0
 
-corto_savepath = C:\Users\pietr\OneDrive - Politecnico di Milano\PoliMi - LM\blender4GNC_repo\corto_PeterCdev\output
+corto_savepath = C:\devDir\corto_PeterCdev\output

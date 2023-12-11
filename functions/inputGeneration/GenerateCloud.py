@@ -66,9 +66,9 @@ def GenerateQSC_origin(camera_position):
     camera_up = np.cross(camera_direction, camera_right)
     camera_up = camera_up / np.linalg.norm(camera_up)
     # Generate the quaternion for Blender [w,xyz]
-    r_cam = R.from_matrix(np.transpose([camera_right,camera_up,camera_direction]))
+    r_cam = R.from_matrix(np.transpose([camera_right,camera_up,camera_direction])) # ROTATION MUST ACCOUNT FOR THE FACT THAT THE CAMERA IS POINTING TOWARD -Z 
     r_cam = r_cam.as_quat()
-    r_blender = [r_cam[3],r_cam[0],r_cam[1],r_cam[2]]
+    r_blender = [r_cam[3],r_cam[0],r_cam[1],r_cam[2]] # BLENDER USES HAMILTON CONVENTION
     return r_blender
 
 def GenerateTimestamp():

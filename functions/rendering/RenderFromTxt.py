@@ -103,9 +103,9 @@ elif body['name'] == 'S6_Moon':
     albedo = 0.169 # TBD
     SUN_energy = 30 # TBD
     BODY = bpy.data.objects["Moon"]
-    scale_BU = 1
-    displacemenet_name = 'ldem_16'
-    texture_name = 'lroc_color_poles_32k'
+    scale_BU = 1 # Does nothing!
+    displacemenet_name = 'ldem_64' # Does nothing!
+    texture_name = 'lroc_color_poles_64k' # Does nothing!
 
 #I/O pathsSSSSS
 home_path = bpy.path.abspath("//")
@@ -115,8 +115,8 @@ txt_path = os.path.join(home_path, geometry['name'] + '.txt')
 CAM.data.type = 'PERSP'
 CAM.data.lens_unit = 'FOV'
 CAM.data.angle = scene['fov'] * np.pi / 180
-CAM.data.clip_start = 0.1 # [m]
-CAM.data.clip_end = 10000 # [m]
+CAM.data.clip_start = 0.01 # [m]
+CAM.data.clip_end = 4E8 # [m]
 bpy.context.scene.render.pixel_aspect_x = 1
 bpy.context.scene.render.pixel_aspect_y = 1
 bpy.context.scene.render.resolution_x = scene['resx'] # CAM resolution (x)
@@ -150,14 +150,14 @@ bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value =
 
 # RENDERING ENGINE properties 
 bpy.context.scene.render.engine = 'CYCLES'
-bpy.context.scene.cycles.device = 'CPU'
+bpy.context.scene.cycles.device = 'GPU'
 bpy.context.scene.cycles.samples = scene['rendSamples']
 bpy.context.scene.cycles.preview_samples = scene['viewSamples']
 
 ######[3]  EXTRACT DATA FROM TXT [3]######
 
 n_rows = len(open(os.path.join(txt_path)).readlines())
-n_col = 18 # HARDCODED: SPLIT is critically dependend on this value!
+n_col = 18 # HARDCODED: PC comment: SPLIT is critically dependend on this value!
 
 from_txt = np.zeros((n_rows,n_col))
 
@@ -173,7 +173,7 @@ file.close()
 
 # [0] ID or ET
 # [1,2,3] Body pos [BU] and [4,5,6,7] orientation [-]
-# [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-]
+# [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-] # TO CHECK: WHICH QUATERNION CONVENTION?
 # [15,16,17] Sun pos [BU]
 
 # ID
@@ -194,7 +194,7 @@ def PositionAll(ii):
     OR_BODY_ii = R_q_BODY[ii,:]
     POS_SC_ii = R_pos_SC[ii,:]
     OR_SC_ii = R_q_SC[ii,:]
-    POS_SUN_ii = -R_pos_SUN[ii,:]
+    POS_SUN_ii = R_pos_SUN[ii,:]
     # BODY position
     BODY.location[0] = POS_BODY_ii[0]
     BODY.location[1] = POS_BODY_ii[1]
@@ -209,16 +209,19 @@ def PositionAll(ii):
     CAM.location[0] = POS_SC_ii[0]
     CAM.location[1] = POS_SC_ii[1]
     CAM.location[2] = POS_SC_ii[2]
+    print('CAM POSITION:', POS_SC_ii)
     # CAM orientation
     CAM.rotation_mode = 'QUATERNION'
     CAM.rotation_quaternion[0] = OR_SC_ii[0]
     CAM.rotation_quaternion[1] = OR_SC_ii[1]
     CAM.rotation_quaternion[2] = OR_SC_ii[2]
     CAM.rotation_quaternion[3] = OR_SC_ii[3]
+    print('CAM QUATERNION:', OR_SC_ii)
     # SUN position 
     SunVector = POS_SUN_ii
+    print('SUN POSITION:', POS_SUN_ii)
     direction = mathutils.Vector(SunVector/np.linalg.norm(SunVector))
-    rot_quat = direction.to_track_quat('-Z', 'Y')
+    rot_quat = direction.to_track_quat('Z', 'Y')
     SUN.location[0] = POS_SUN_ii[0]
     SUN.location[1] = POS_SUN_ii[1]
     SUN.location[2] = POS_SUN_ii[2]
