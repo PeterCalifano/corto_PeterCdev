@@ -323,3 +323,6 @@ for ii in range(0, n_rows,1):
         Render(ii)
         if scene['labelDepth'] == 1:
             SaveDepth(ii)
+
+        # ADD SCENE FIGURE DISPLAY AND UPDATING AFTER EACH RENDERING  
+        # MAKE IT OPTIONAL  

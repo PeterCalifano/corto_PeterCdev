@@ -7,13 +7,13 @@ from scipy.spatial.transform import Rotation as R
 
 ######[1]  (START) INPUT SECTION (START) [1]######
 
-nPoints = 5000 # [-]
+nPoints = 1000 # [-]
 R_min = 10 # [BU]
 R_max = 40 # [BU]
 theta_min = 0 # [deg]
 theta_max = 180 # [deg]
-phi_min = -30 # [deg]
-phi_max = 30 # [deg]
+phi_min = -120 # [deg]
+phi_max = 120 # [deg]
 
 ######[1]  (END) INPUT SECTION (END) [1]######
 
@@ -97,8 +97,9 @@ rot_Body_x_dist = np.zeros((nPoints,1)) # [deg]
 rot_Body_y_dist = np.zeros((nPoints,1)) # [deg]
 rot_Body_z_dist = GenerateRandP(0,360,nPoints) # [deg]
 q_Body_dist = np.zeros((nPoints,4)) # [-]
+
 for ii in range (0,nPoints,1):
-  r = R.from_euler('xyz',[rot_Body_x_dist[ii],rot_Body_y_dist[ii],rot_Body_z_dist[ii]],degrees=True)
+  r = R.from_euler('xyz',[rot_Body_x_dist[ii][0],rot_Body_y_dist[ii][0],rot_Body_z_dist[ii]],degrees=True)
   q = r.as_quat()
   q_Body_dist[ii,:] = [q[3],q[0],q[1],q[2]]
 # Generate Sun's positions (Assumed on Y-axis in this example)
