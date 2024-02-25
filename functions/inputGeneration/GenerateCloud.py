@@ -7,11 +7,11 @@ from scipy.spatial.transform import Rotation as R
 
 ######[1]  (START) INPUT SECTION (START) [1]######
 
-nPoints = 1000 # [-]
+nPoints = 1500 # [-]
 R_min = 10 # [BU]
 R_max = 40 # [BU]
-theta_min = 0 # [deg]
-theta_max = 180 # [deg]
+theta_min = 45 # [deg]
+theta_max = 90 # [deg]
 phi_min = -120 # [deg]
 phi_max = 120 # [deg]
 

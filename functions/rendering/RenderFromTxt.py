@@ -6,8 +6,28 @@ import os
 import time
 import math
 
+import json
+from pprint import pprint
+
 from random import randint
 from datetime import datetime
+
+def read_parse_configJSON(configJSONfilePath):
+    # Create empty configutation dictionaries
+    body = {}
+    geometry = {}
+    scene = {}
+    corto = {}
+
+    # Load JSON file parsing numbers
+    with open(configJSONfilePath, 'r') as json_file:
+        ConfigDataJSON = json.load(json_file, parse_float=True, parse_int=True)
+
+    # Test printing
+    print(ConfigDataJSON)
+
+    return body, geometry, scene, corto
+
 
 def read_and_parse_config(filename):
     body = {}
@@ -55,6 +75,10 @@ def read_and_parse_config(filename):
     print('')
     return body, geometry, scene, corto
 
+
+
+
+##################### MAIN STARTS HERE ###########################
 # ACHTUNG: ALL.txt must be manually modified to select the options
 
 ######[1]  (START) INPUT SECTION (START) [1]######
