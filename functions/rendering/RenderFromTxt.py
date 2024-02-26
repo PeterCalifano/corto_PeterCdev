@@ -5,13 +5,53 @@ import csv
 import os
 import time
 import math
-
-import json
-from pprint import pprint
+import sys
 
 from random import randint
 from datetime import datetime
 
+######[1]  (START) INPUT SECTION (START) [1]######
+filenameext = 'C:\\devDir\\corto_PeterCdev\\input\\ALL.txt'
+#filenameext = 'ENTER THE PATH where your "ALL.txt" is saved '
+######[1]  (END) INPUT SECTION (END) [1]######
+
+####### [-] HANDLE SHELL ARGUMENTS [-] #######
+if ('-v' in sys.argv) or ('--verbose' in sys.argv):
+    # VERBOSE MODE: print arguments
+    print('\nVERBOSE MODE')
+    print('N° of input arguments:', len(sys.argv)) # DEBUG PRINTING:
+    print('Arguments list:')
+    for arg in sys.argv:
+        print(arg)
+
+# Check if input config file is specified
+if ('-c' in sys.argv) or ('--config' in sys.argv):
+    # Get '-c' or '--config' and its index in sys.argv
+    index = [id for id,x in enumerate(sys.argv) if (x=='-c' or x=='--config')] 
+    # Get subsequent input (the config file path)
+    configFilePath = sys.argv[index+1]
+    # Normalize path to UNIX-style
+    configFilePath = os.path.normpath(configFilePath) 
+
+    # Load file. Throw error if not found
+    print('Loading config file from:\n', configFilePath)
+    if not(os.path.isfile(configFilePath)):
+        raise Exception('ERROR while loading specified config. file: NOT FOUND! Check input path.')
+    else:
+        # Split path and get extension
+        (path2folder, filenameext) = os.path.split(configFilePath)
+        (filename, configExt) = os.path.splitext(filenameext)
+
+        if configExt == '.json':
+            import json
+            from pprint import pprint
+else:
+    print('Using .txt config mode from default config file:', filenameext)
+    time.sleep(1)   
+
+
+
+###### [2] PARSER FUNCTIONS DEFINITIONS [2]###### 
 def read_parse_configJSON(configJSONfilePath):
     # Create empty configutation dictionaries
     body = {}
@@ -23,18 +63,22 @@ def read_parse_configJSON(configJSONfilePath):
     with open(configJSONfilePath, 'r') as json_file:
         ConfigDataJSON = json.load(json_file, parse_float=True, parse_int=True)
 
+    # Expected fields:    
+    # SceneData
+    # CameraData
+    # BlenderOpts
+
     # Test printing
     print(ConfigDataJSON)
 
-    return body, geometry, scene, corto
+    return body, geometry, scene, corto, poseData
 
-
-def read_and_parse_config(filename):
+def read_parse_configTXT(configTXTfilePath):
     body = {}
     geometry = {}
     scene = {}
     corto = {}
-    with open(filename, 'r') as file:
+    with open(configTXTfilePath, 'r') as file:
         for line in file:
             # Skip comments and empty lines
             if line.strip() == '' or line.startswith('#'):
@@ -75,149 +119,7 @@ def read_and_parse_config(filename):
     print('')
     return body, geometry, scene, corto
 
-
-
-
-##################### MAIN STARTS HERE ###########################
-# ACHTUNG: ALL.txt must be manually modified to select the options
-
-# Modify this below to use JSON file directly instead of ALL.txt if JSON mode is requested with input filename
-# The bat file must pass the JSON config file path with extension. Use the extension to decide the mode 
-# if not specified with additional but input optional flag. 
-
-######[1]  (START) INPUT SECTION (START) [1]######
-filename = 'C:\\devDir\\corto_PeterCdev\\input\\ALL.txt'
-#filename = 'ENTER THE PATH where your "ALL.txt" is saved '
-######[1]  (END) INPUT SECTION (END) [1]######
-
-body, geometry, scene, corto = read_and_parse_config(filename)
-
-
-######[2]  SETUP OBJ PROPERTIES [2]######
-# Set object names
-CAM = bpy.data.objects["Camera"]
-SUN = bpy.data.objects["Sun"]
-if body['name'] == 'S1_Eros':
-    albedo = 0.15 # TBD
-    SUN_energy = 7 # TBD
-    BODY = bpy.data.objects["Eros"]
-    scale_BU = 10
-    texture_name = 'Eros Grayscale'
-elif body['name'] == 'S2_Itokawa':
-    albedo = 0.15 # TBD
-    SUN_energy = 5 # TBD
-    BODY = bpy.data.objects["Itokawa"]
-    scale_BU = 0.2
-    texture_name = 'Itokawa Grayscale'
-elif body['name'] == 'S4_Bennu':
-    albedo = 0.15 # TBD
-    SUN_energy = 7 # TBD
-    BODY = bpy.data.objects["Bennu"]
-    scale_BU = 0.2
-    texture_name = 'Bennu_global_FB34_FB56_ShapeV28_GndControl_MinnaertPhase30_PAN_8bit'
-elif body['name'] == 'S5_Didymos':
-    albedo = 0.15 # TBD
-    SUN_energy = 7 # TBD
-    BODY = bpy.data.objects["Didymos"]
-    BODY_Secondary = bpy.data.objects["Dimorphos"]
-    scale_BU = 0.2
-elif body['name'] == 'S5_Didymos_Milani':
-    albedo = 0.15 # TBD
-    SUN_energy = 7 # TBD
-    BODY = bpy.data.objects["Didymos"]
-    BODY_Secondary = bpy.data.objects["Dimorphos"]
-    scale_BU = 0.5
-elif body['name'] == 'S6_Moon':
-    albedo = 0.169 # TBD
-    SUN_energy = 30 # TBD
-    BODY = bpy.data.objects["Moon"]
-    scale_BU = 1 # Does nothing!
-    displacemenet_name = 'ldem_64' # Does nothing!
-    texture_name = 'lroc_color_poles_64k' # Does nothing!
-
-#I/O pathsSSSSS
-home_path = bpy.path.abspath("//")
-txt_path = os.path.join(home_path, geometry['name'] + '.txt')
-
-# CAM properties
-CAM.data.type = 'PERSP'
-CAM.data.lens_unit = 'FOV'
-CAM.data.angle = scene['fov'] * np.pi / 180
-CAM.data.clip_start = 0.1 # [m]
-CAM.data.clip_end = 10000 # [m]
-bpy.context.scene.cycles.film_exposure = scene['filmexposure']
-bpy.context.scene.view_settings.view_transform = scene['viewtransform']
-bpy.context.scene.render.pixel_aspect_x = 1
-bpy.context.scene.render.pixel_aspect_y = 1
-bpy.context.scene.render.resolution_x = scene['resx'] # CAM resolution (x)
-bpy.context.scene.render.resolution_y = scene['resy'] # CAM resolution (y)
-bpy.context.scene.render.image_settings.color_mode = 'BW'
-bpy.context.scene.render.image_settings.color_depth = str(scene['encoding'])
-if body['name'] == 'S5_Didymos' or body['name'] == 'S5_Didymos_Milani':
-    bpy.context.scene.cycles.diffuse_bounces = 0 
-
-# SUN properties
-SUN.data.type = 'SUN'
-SUN.data.energy = SUN_energy  # To perform quantitative analysis
-SUN.data.angle = 0.53*np.pi/180
-
-# BODY properties
-BODY.location = [0,0,0]
-BODY.rotation_mode = 'XYZ'
-BODY.rotation_euler = [0,0,0]
-if body['name'] == 'S5_Didymos' or body['name'] == 'S5_Didymos_Milani':
-    bpy.context.scene.cycles.diffuse_bounces = 0 
-    BODY.pass_index = 1
-    BODY_Secondary.pass_index = 2
-    BODY_Secondary.location = [1.2,0,0]
-    BODY_Secondary.rotation_mode = 'XYZ'
-    BODY_Secondary.rotation_euler = [0,0,0]
-    if body['name'] == 'S5_Didymos_Milani':
-        BODY.scale = [1,1,0.78]
-        BODY_Secondary.scale = [0.850, 1.080, 0.840]     
-# WORLD properties
-bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0, 0, 0, 1)
-
-# RENDERING ENGINE properties 
-bpy.context.scene.render.engine = 'CYCLES'
-bpy.context.scene.cycles.device = 'GPU'
-bpy.context.scene.cycles.samples = scene['rendSamples']
-bpy.context.scene.cycles.preview_samples = scene['viewSamples']
-
-######[3]  EXTRACT DATA FROM TXT [3]######
-
-n_rows = len(open(os.path.join(txt_path)).readlines())
-n_col = 18 # HARDCODED: PC comment: SPLIT is critically dependend on this value!
-
-from_txt = np.zeros((n_rows,n_col))
-
-file = open(os.path.join(txt_path),'r',newline = '')
-ii=0
-for line in file:
-    fields = line.split(" ")
-    for jj in range(0,n_col,1):
-        from_txt[ii,jj] = float(fields[jj])
-    ii = ii+1
-    
-file.close()
-
-# [0] ID or ET
-# [1,2,3] Body pos [BU] and [4,5,6,7] orientation [-]
-# [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-] # TO CHECK: WHICH QUATERNION CONVENTION?
-# [15,16,17] Sun pos [BU]
-
-# ID
-ID_pose = from_txt[:,0]
-# Body
-R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
-R_q_BODY = from_txt[:,4:8] # (-) 
-# Camera
-R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
-R_q_SC = from_txt[:,11:15] # (-) 
-# Sun 
-R_pos_SUN = from_txt[:,15:18] # (BU) 
-
-######[4] FUNCTIONS DEFINITIONS [4]######
+###### [1] SETUP FUNCTIONS DEFINITIONS [1]######
 
 def PositionAll(ii):
     POS_BODY_ii = R_pos_BODY[ii,:]
@@ -306,53 +208,215 @@ def GenerateTimestamp():
     formatted_timestamp = timestamp.strftime("%Y_%m_%d_%H_%M_%S")
     return formatted_timestamp
 
-### CYCLIC RENDERINGS ###
 
-output_timestamp = GenerateTimestamp()
-output_folderName = body['name'] + '_' + output_timestamp
+##################### MAIN STARTS HERE ###########################
+if __name__ == '__main__':
 
-output_savepath = os.path.join(corto['savepath'],output_folderName)
-output_img_savepath = os.path.join(output_savepath,'img')
-output_label_savepath = os.path.join(output_savepath,'label')
+# Modify this below to use JSON file directly instead of ALL.txt if JSON mode is requested with input filename
+# The bat file must pass the JSON config file path with extension. Use the extension to decide the mode 
+# if not specified with additional but input optional flag. 
 
-MakeDir(output_savepath)
-MakeDir(output_img_savepath)
-if scene['labelDepth'] == 1 or scene['labelID'] == 1 or scene['labelSlopes'] == 1:
-    MakeDir(output_label_savepath)
-    if scene['labelDepth'] == 1:
-        MakeDir(os.path.join(output_label_savepath,'depth'))
-    if scene['labelID'] == 1:
-        MakeDir(os.path.join(output_label_savepath,'IDmask'))
-        bpy.data.scenes["Scene"].node_tree.nodes["MaskOutput"].base_path = output_label_savepath
-        bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[0].path="\IDmask\Mask_1\######" 
-        bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[1].path="\IDmask\Mask_1_shadow\######" 
-        bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[2].path="\IDmask\Mask_2\######"
-        bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[3].path="\IDmask\Mask_2_shadow\######"
-    if scene['labelSlopes'] == 1:
-        MakeDir(os.path.join(output_label_savepath,'slopes'))
-        bpy.data.scenes["Scene"].node_tree.nodes["SlopeOutput"].base_path = output_label_savepath
-        bpy.data.scenes["Scene"].node_tree.nodes['SlopeOutput'].file_slots[0].path="\slopes\######" 
+    if configExt == '.json':
+        print('Using JSON config mode')
+        time.sleep(1)   
+        body, geometry, scene, corto, poseData = read_parse_configJSON(configFilePath)
 
-## Cyclic rendering
-SetKeyframe(1)
-for ii in range(0, n_rows,1):
-    SetKeyframe(ii+1)
-    print('---------------Preparing for case: ',ii,'---------------')
-    print('Position bodies')
-    PositionAll(ii)
-    bpy.context.view_layer.update()
-    if ii<geometry['ii0']:
-        print('--------------Not rendering---------------')
+    elif configExt == '.txt':
+        print('Using .txt config mode')
+        time.sleep(1)   
+        body, geometry, scene, corto = read_parse_configTXT(configFilePath)
     else:
-        bpy.context.view_layer.update()
-        print('Apply scattering body')
-        #ApplyScattering(bpy.data.node_groups["ScatteringGroup_D1"],R_pos_SC[ii],R_pos_SUN[ii],scene['scattering'],albedo)
-        bpy.context.view_layer.update()
-        time.sleep(2) # For contingency
-        print('--------------Rendering---------------')
-        Render(ii)
-        if scene['labelDepth'] == 1:
-            SaveDepth(ii)
+        raise Exception('Invalid configuration file extension. Supported: [.json, .txt]')
 
-        # ADD SCENE FIGURE DISPLAY AND UPDATING AFTER EACH RENDERING  
-        # MAKE IT OPTIONAL  
+    ######[2]  SETUP OBJ PROPERTIES [2]######
+    # Set object names
+    CAM = bpy.data.objects["Camera"]
+    SUN = bpy.data.objects["Sun"]
+    if body['name'] == 'S1_Eros':
+        albedo = 0.15 # TBD
+        SUN_energy = 7 # TBD
+        BODY = bpy.data.objects["Eros"]
+        scale_BU = 10
+        texture_name = 'Eros Grayscale'
+    elif body['name'] == 'S2_Itokawa':
+        albedo = 0.15 # TBD
+        SUN_energy = 5 # TBD
+        BODY = bpy.data.objects["Itokawa"]
+        scale_BU = 0.2
+        texture_name = 'Itokawa Grayscale'
+    elif body['name'] == 'S4_Bennu':
+        albedo = 0.15 # TBD
+        SUN_energy = 7 # TBD
+        BODY = bpy.data.objects["Bennu"]
+        scale_BU = 0.2
+        texture_name = 'Bennu_global_FB34_FB56_ShapeV28_GndControl_MinnaertPhase30_PAN_8bit'
+    elif body['name'] == 'S5_Didymos':
+        albedo = 0.15 # TBD
+        SUN_energy = 7 # TBD
+        BODY = bpy.data.objects["Didymos"]
+        BODY_Secondary = bpy.data.objects["Dimorphos"]
+        scale_BU = 0.2
+    elif body['name'] == 'S5_Didymos_Milani':
+        albedo = 0.15 # TBD
+        SUN_energy = 7 # TBD
+        BODY = bpy.data.objects["Didymos"]
+        BODY_Secondary = bpy.data.objects["Dimorphos"]
+        scale_BU = 0.5
+    elif body['name'] == 'S6_Moon':
+        albedo = 0.169 # TBD
+        SUN_energy = 30 # TBD
+        BODY = bpy.data.objects["Moon"]
+        scale_BU = 1 # Does nothing!
+        displacemenet_name = 'ldem_64' # Does nothing!
+        texture_name = 'lroc_color_poles_64k' # Does nothing!
+
+    #I/O pathsSSSSS
+    home_path = bpy.path.abspath("//")
+    txt_path = os.path.join(home_path, geometry['name'] + '.txt')
+
+    # CAM properties
+    CAM.data.type = 'PERSP'
+    CAM.data.lens_unit = 'FOV'
+    CAM.data.angle = scene['fov'] * np.pi / 180
+    CAM.data.clip_start = 0.1 # [m]
+    CAM.data.clip_end = 10000 # [m]
+
+    bpy.context.scene.cycles.film_exposure = scene['filmexposure']
+    bpy.context.scene.view_settings.view_transform = scene['viewtransform']
+    bpy.context.scene.render.pixel_aspect_x = 1
+    bpy.context.scene.render.pixel_aspect_y = 1
+
+    bpy.context.scene.render.resolution_x = scene['resx'] # CAM resolution (x)
+    bpy.context.scene.render.resolution_y = scene['resy'] # CAM resolution (y)
+    bpy.context.scene.render.image_settings.color_mode = 'BW'
+    bpy.context.scene.render.image_settings.color_depth = str(scene['encoding'])
+    if body['name'] == 'S5_Didymos' or body['name'] == 'S5_Didymos_Milani':
+        bpy.context.scene.cycles.diffuse_bounces = 0 
+
+    # SUN properties
+    SUN.data.type = 'SUN'
+    SUN.data.energy = SUN_energy  # To perform quantitative analysis
+    SUN.data.angle = 0.53*np.pi/180
+
+    # BODY properties
+    BODY.location = [0,0,0]
+    BODY.rotation_mode = 'XYZ'
+    BODY.rotation_euler = [0,0,0]
+    if body['name'] == 'S5_Didymos' or body['name'] == 'S5_Didymos_Milani':
+        bpy.context.scene.cycles.diffuse_bounces = 0 
+        BODY.pass_index = 1
+        BODY_Secondary.pass_index = 2
+        BODY_Secondary.location = [1.2,0,0]
+        BODY_Secondary.rotation_mode = 'XYZ'
+        BODY_Secondary.rotation_euler = [0,0,0]
+        if body['name'] == 'S5_Didymos_Milani':
+            BODY.scale = [1,1,0.78]
+            BODY_Secondary.scale = [0.850, 1.080, 0.840]     
+    # WORLD properties
+    bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0, 0, 0, 1)
+
+    # RENDERING ENGINE properties 
+    bpy.context.scene.render.engine = 'CYCLES'
+    bpy.context.scene.cycles.device = 'GPU'
+    bpy.context.scene.cycles.samples = scene['rendSamples']
+    bpy.context.scene.cycles.preview_samples = scene['viewSamples']
+
+    ######[3]  EXTRACT DATA FROM CONFIG FILE [3]######
+
+    if configExt == '.json':
+
+
+        # ID
+        ID_pose = from_txt[:,0]
+        # Body
+        R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
+        R_q_BODY = from_txt[:,4:8] # (-) 
+        # Camera
+        R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
+        R_q_SC = from_txt[:,11:15] # (-) 
+        # Sun 
+        R_pos_SUN = from_txt[:,15:18] # (BU) 
+
+
+    elif configExt == '.txt':
+        n_rows = len(open(os.path.join(txt_path)).readlines())
+        n_col = 18 # HARDCODED: PC comment: SPLIT is critically dependend on this value!
+
+        from_txt = np.zeros((n_rows,n_col))
+
+        file = open(os.path.join(txt_path),'r',newline = '')
+        ii=0
+        for line in file:
+            fields = line.split(" ")
+            for jj in range(0,n_col,1):
+                from_txt[ii,jj] = float(fields[jj])
+            ii = ii+1
+
+        file.close()
+        # [0] ID or ET
+        # [1,2,3] Body pos [BU] and [4,5,6,7] orientation [-]
+        # [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-] # TO CHECK: WHICH QUATERNION CONVENTION?
+        # [15,16,17] Sun pos [BU]
+
+        # ID
+        ID_pose = from_txt[:,0]
+        # Body
+        R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
+        R_q_BODY = from_txt[:,4:8] # (-) 
+        # Camera
+        R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
+        R_q_SC = from_txt[:,11:15] # (-) 
+        # Sun 
+        R_pos_SUN = from_txt[:,15:18] # (BU) 
+
+
+    ### CYCLIC RENDERINGS ###
+
+    output_timestamp = GenerateTimestamp()
+    output_folderName = body['name'] + '_' + output_timestamp
+
+    output_savepath = os.path.join(corto['savepath'],output_folderName)
+    output_img_savepath = os.path.join(output_savepath,'img')
+    output_label_savepath = os.path.join(output_savepath,'label')
+
+    MakeDir(output_savepath)
+    MakeDir(output_img_savepath)
+    if scene['labelDepth'] == 1 or scene['labelID'] == 1 or scene['labelSlopes'] == 1:
+        MakeDir(output_label_savepath)
+        if scene['labelDepth'] == 1:
+            MakeDir(os.path.join(output_label_savepath,'depth'))
+        if scene['labelID'] == 1:
+            MakeDir(os.path.join(output_label_savepath,'IDmask'))
+            bpy.data.scenes["Scene"].node_tree.nodes["MaskOutput"].base_path = output_label_savepath
+            bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[0].path="\IDmask\Mask_1\######" 
+            bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[1].path="\IDmask\Mask_1_shadow\######" 
+            bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[2].path="\IDmask\Mask_2\######"
+            bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[3].path="\IDmask\Mask_2_shadow\######"
+        if scene['labelSlopes'] == 1:
+            MakeDir(os.path.join(output_label_savepath,'slopes'))
+            bpy.data.scenes["Scene"].node_tree.nodes["SlopeOutput"].base_path = output_label_savepath
+            bpy.data.scenes["Scene"].node_tree.nodes['SlopeOutput'].file_slots[0].path="\slopes\######" 
+
+    ## Cyclic rendering
+    SetKeyframe(1)
+    for ii in range(0, n_rows,1):
+        SetKeyframe(ii+1)
+        print('---------------Preparing for case: ',ii,'---------------')
+        print('Position bodies')
+        PositionAll(ii)
+        bpy.context.view_layer.update()
+        if ii<geometry['ii0']:
+            print('--------------Not rendering---------------')
+        else:
+            bpy.context.view_layer.update()
+            print('Apply scattering body')
+            #ApplyScattering(bpy.data.node_groups["ScatteringGroup_D1"],R_pos_SC[ii],R_pos_SUN[ii],scene['scattering'],albedo)
+            bpy.context.view_layer.update()
+            time.sleep(2) # For contingency
+            print('--------------Rendering---------------')
+            Render(ii)
+            if scene['labelDepth'] == 1:
+                SaveDepth(ii)
+
+            # ADD SCENE FIGURE DISPLAY AND UPDATING AFTER EACH RENDERING  
+            # MAKE IT OPTIONAL  
