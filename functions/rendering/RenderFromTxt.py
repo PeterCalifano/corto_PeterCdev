@@ -52,26 +52,77 @@ else:
 
 
 ###### [2] PARSER FUNCTIONS DEFINITIONS [2]###### 
+
 def read_parse_configJSON(configJSONfilePath):
     # Create empty configutation dictionaries
     body = {}
     geometry = {}
     scene = {}
     corto = {}
-
+    data = {}
+    
     # Load JSON file parsing numbers
     with open(configJSONfilePath, 'r') as json_file:
-        ConfigDataJSON = json.load(json_file, parse_float=True, parse_int=True)
+        ConfigDataJSONdict = json.load(json_file) # Load JSON as dict
 
-    # Expected fields:    
-    # SceneData
-    # CameraData
-    # BlenderOpts
+    if isinstance(ConfigDataJSONdict, dict):
+        # Get JSONdict data
+        CameraData = ConfigDataJSONdict['CameraData']
+        BlenderOpts = ConfigDataJSONdict['BlenderOpts']
+        SceneData = ConfigDataJSONdict['SceneData']
 
-    # Test printing
-    print(ConfigDataJSON)
+    elif isinstance(ConfigDataJSONdict, list):
+        # Pretty Printing has been enabled in MATLAB I guess...
+        raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), disable PrettyPrint option.')
 
-    return body, geometry, scene, corto, poseData
+    # Manual Mapping to current CORTO version (26 Feb 2024). DEVNOTE: not optimal. It should be improved.
+    # SCENE
+    scene['fov']         = CameraData['fov'  ]
+    scene['resx']        = CameraData['resx' ]
+    scene['resy']        = CameraData['resy' ]
+    scene['labelDepth']  = SceneData['labelDepth'] 
+    scene['labelID']     = SceneData['labelID'] 
+    scene['labelSlopes'] = SceneData['labelSlopes'] 
+
+    # BODY
+    body['name'] = SceneData['scenarioName']
+    body['num'] = 1
+
+    # BLENDER OPTIONS
+    scene['encoding']      = BlenderOpts['encoding']
+    scene['rendSamples']   = BlenderOpts['rendSamples']
+    scene['viewSamples']   = BlenderOpts['viewSamples']
+    scene['scattering']    = BlenderOpts['scattering']
+    scene['viewtransform'] = BlenderOpts['viewtransform']
+    scene['filmexposure']  = BlenderOpts['filmexposure']
+
+    corto['savepath'] = os.path.normpath(BlenderOpts['savepath'])
+
+    # CAMERA, TARGET and ILLUMINATION
+    data['rStateCam']    = np.array(SceneData['rStateCam'])    
+    data['rTargetBody']  = np.array(SceneData['rTargetBody'])
+    data['rSun']         = np.array(SceneData['rSun'])         
+    data['qFromCAMtoIN'] = np.array(SceneData['qFromCAMtoIN'])
+    data['qFromTFtoIN']  = np.array(SceneData['qFromTFtoIN'])  
+    data['ID']           = np.arange(len(SceneData['rStateCam'])).flatten()
+
+    geometry['ii0'] = 0 # Initial index for rendering
+
+    # Display loaded configuration variables
+    for key, value in body.items():
+        print(f"{key}: {value}")
+    print('')
+    for key, value in geometry.items():
+        print(f"{key}: {value}")
+    print('')
+    for key, value in scene.items():
+        print(f"{key}: {value}")
+    print('')
+    for key, value in corto.items():
+        print(f"{key}: {value}")
+    print('')
+
+    return body, geometry, scene, corto, data
 
 def read_parse_configTXT(configTXTfilePath):
     body = {}
@@ -212,14 +263,10 @@ def GenerateTimestamp():
 ##################### MAIN STARTS HERE ###########################
 if __name__ == '__main__':
 
-# Modify this below to use JSON file directly instead of ALL.txt if JSON mode is requested with input filename
-# The bat file must pass the JSON config file path with extension. Use the extension to decide the mode 
-# if not specified with additional but input optional flag. 
-
     if configExt == '.json':
         print('Using JSON config mode')
         time.sleep(1)   
-        body, geometry, scene, corto, poseData = read_parse_configJSON(configFilePath)
+        body, geometry, scene, corto, scenarioData = read_parse_configJSON(configFilePath)
 
     elif configExt == '.txt':
         print('Using .txt config mode')
@@ -229,6 +276,7 @@ if __name__ == '__main__':
         raise Exception('Invalid configuration file extension. Supported: [.json, .txt]')
 
     ######[2]  SETUP OBJ PROPERTIES [2]######
+    # PeterC dev. note: ideally scale_BU should be read from the Blender model, such that input units are allowed to be in the agreed SI units, i.e. km without modifications
     # Set object names
     CAM = bpy.data.objects["Camera"]
     SUN = bpy.data.objects["Sun"]
@@ -236,7 +284,7 @@ if __name__ == '__main__':
         albedo = 0.15 # TBD
         SUN_energy = 7 # TBD
         BODY = bpy.data.objects["Eros"]
-        scale_BU = 10
+        scale_BU = 10 
         texture_name = 'Eros Grayscale'
     elif body['name'] == 'S2_Itokawa':
         albedo = 0.15 # TBD
@@ -269,11 +317,9 @@ if __name__ == '__main__':
         scale_BU = 1 # Does nothing!
         displacemenet_name = 'ldem_64' # Does nothing!
         texture_name = 'lroc_color_poles_64k' # Does nothing!
-
-    #I/O pathsSSSSS
-    home_path = bpy.path.abspath("//")
-    txt_path = os.path.join(home_path, geometry['name'] + '.txt')
-
+    else:
+        raise Exception('Input model name',body['name'],'not found.')
+    
     # CAM properties
     CAM.data.type = 'PERSP'
     CAM.data.lens_unit = 'FOV'
@@ -324,23 +370,24 @@ if __name__ == '__main__':
     ######[3]  EXTRACT DATA FROM CONFIG FILE [3]######
 
     if configExt == '.json':
-
-
         # ID
-        ID_pose = from_txt[:,0]
+        ID_pose = scenarioData['ID']
         # Body
-        R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
-        R_q_BODY = from_txt[:,4:8] # (-) 
+        R_pos_BODY = scenarioData['rTargetBody']*scale_BU # (BU) 
+        R_q_BODY = scenarioData['qFromTFtoIN'] #from_txt[:,4:8] # (-) 
         # Camera
-        R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
-        R_q_SC = from_txt[:,11:15] # (-) 
+        R_pos_SC = scenarioData['rStateCam']*scale_BU #from_txt[:,8:11]*scale_BU # (BU) 
+        R_q_SC = scenarioData['qFromCAMtoIN'] # from_txt[:,11:15] # (-) 
         # Sun 
-        R_pos_SUN = from_txt[:,15:18] # (BU) 
+        R_pos_SUN = scenarioData['rSun'] #from_txt[:,15:18] # (BU) 
 
 
     elif configExt == '.txt':
+            #I/O pathsSSSSS
+        home_path = bpy.path.abspath("//")
+        txt_path = os.path.join(home_path, geometry['name'] + '.txt')
         n_rows = len(open(os.path.join(txt_path)).readlines())
-        n_col = 18 # HARDCODED: PC comment: SPLIT is critically dependend on this value!
+        n_col = 18 # HARDCODED: PeterC comment: SPLIT is critically dependend on this value!
 
         from_txt = np.zeros((n_rows,n_col))
 
