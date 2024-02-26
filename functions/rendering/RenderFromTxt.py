@@ -81,6 +81,10 @@ def read_and_parse_config(filename):
 ##################### MAIN STARTS HERE ###########################
 # ACHTUNG: ALL.txt must be manually modified to select the options
 
+# Modify this below to use JSON file directly instead of ALL.txt if JSON mode is requested with input filename
+# The bat file must pass the JSON config file path with extension. Use the extension to decide the mode 
+# if not specified with additional but input optional flag. 
+
 ######[1]  (START) INPUT SECTION (START) [1]######
 filename = 'C:\\devDir\\corto_PeterCdev\\input\\ALL.txt'
 #filename = 'ENTER THE PATH where your "ALL.txt" is saved '
