@@ -73,7 +73,7 @@ def read_parse_configJSON(configJSONfilePath):
 
     elif isinstance(ConfigDataJSONdict, list):
         # Pretty Printing has been enabled in MATLAB I guess...
-        raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), disable PrettyPrint option.')
+        raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), make sure you are providing a struct() as input and not a cell.')
 
     # Manual Mapping to current CORTO version (26 Feb 2024). DEVNOTE: not optimal. It should be improved.
     # SCENE
