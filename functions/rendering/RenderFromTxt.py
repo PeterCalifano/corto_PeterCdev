@@ -47,6 +47,8 @@ if ('-c' in sys.argv) or ('--config' in sys.argv):
             from pprint import pprint
 else:
     print('Using .txt config mode from default config file:', filenameext)
+    configFilePath = filenameext
+    configExt = '.txt'
     time.sleep(1)   
 
 
@@ -261,7 +263,7 @@ def GenerateTimestamp():
 
 
 ##################### MAIN STARTS HERE ###########################
-if __name__ == '__main__':
+if __name__ == '__main__': # Blender call makes this script to run as main
 
     if configExt == '.json':
         print('Using JSON config mode')

@@ -1,3 +1,0 @@
-These scenarios are still "Work in progress"
-TO modify: 
--Output layer to support depth, slopes, ID pass index with and withouth shadows
