@@ -18,7 +18,7 @@ from datetime import datetime
 filenameext = 'DEFAULT TXT CONFIG PATH'
 
 ####### [-] HANDLE SHELL ARGUMENTS [-] #######
-'''
+
 if ('-v' in sys.argv) or ('--verbose' in sys.argv):
     # VERBOSE MODE: print arguments
     print('\nVERBOSE MODE')
@@ -30,16 +30,22 @@ if ('-v' in sys.argv) or ('--verbose' in sys.argv):
 # Check if input config file is specified
 if ('-c' in sys.argv) or ('--config' in sys.argv):
     # Get '-c' or '--config' and its index in sys.argv
-    index = [id for id,x in enumerate(sys.argv) if (x=='-c' or x=='--config')] 
+    index = [id for id,x in enumerate(sys.argv) if (x=='-c' or x=='--config')]
+
+    if len(index) != 1:
+        raise Exception('\nExecution stopped: multiple specifications of -c/--config argument detected. ')
+
+    if len(sys.argv) == index[0]+1 or (sys.argv[index[0]+1][0] == '-'):
+        raise Exception('\nExecution stopped: invalid or missing argument after -c/-config specifier.')
+
     # Get subsequent input (the config file path)
-    configFilePath = sys.argv[index+1]
+    configFilePath = sys.argv[(index[0]+1)]
     # Normalize path to UNIX-style
     configFilePath = os.path.normpath(configFilePath) 
-
     # Load file. Throw error if not found
-    print('Loading config file from:\n', configFilePath)
+    print('\nLoading config file from:', configFilePath,'\n')
     if not(os.path.isfile(configFilePath)):
-        raise Exception('ERROR while loading specified config. file: NOT FOUND! Check input path.')
+        raise Exception('\nERROR while loading specified config. file: NOT FOUND! Check input path.')
     else:
         # Split path and get extension
         (path2folder, filenameext) = os.path.split(configFilePath)
@@ -48,11 +54,13 @@ if ('-c' in sys.argv) or ('--config' in sys.argv):
         if ext == '.json':
             import json
             from pprint import pprint
+        else: 
+            raise Exception('\nExecution stopped: config. path does not point to a valid .json file.')
 else:
     print('Using .txt config mode from default config file:', filenameext)
     time.sleep(1)
 
-'''
+
 
 def read_parse_configJSON(configJSONfilePath):
     # Create empty configutation dictionaries
@@ -74,31 +82,46 @@ def read_parse_configJSON(configJSONfilePath):
 
     elif isinstance(ConfigDataJSONdict, list):
         # Pretty Printing has been enabled in MATLAB I guess...
-        raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), disable PrettyPrint option.')
+        raise Exception('\nDecoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), disable PrettyPrint option.')
 
     # Manual Mapping to current CORTO version (26 Feb 2024)
     # SCENE
-    scene['fov'] =  CameraData['fov'  ]
-    scene['resx'] = CameraData['resx' ]
-    scene['resy'] = CameraData['resy' ]
-    scene['labelDepth']  = SceneData['labelDepth'] 
-    scene['labelID']  = SceneData['labelID'] 
-    scene['labelSlopes']  = SceneData['labelSlopes'] 
+
+    # Required fields in:
+    # CameraData: fov, resx, resy
+    # SceneData: qFromTFtoIN, qFromCAMtoIN, rSun, rTargetBody, rStateCam
+    # BlenderOpts: savepath, filmexposure, viewtransform, scattering, viewSamples, rendSamples, encoding
+
+    scene['fov']         = CameraData['fov'  ]
+    scene['resx']        = CameraData['resx' ]
+    scene['resy']        = CameraData['resy' ]
+    scene['labelDepth']  =  SceneData['labelDepth'] 
+    scene['labelID']     =  SceneData['labelID'] 
+    scene['labelSlopes'] =  SceneData['labelSlopes'] 
 
     # BODY
-    body['name'] = SceneData['scenarioName']
-    body['num'] = 1
+    #body['name'] = SceneData['scenarioName']
+    #body['num'] = 1
 
     # BLENDER OPTIONS
-    scene['encoding'] = BlenderOpts['encoding']
-    scene['rendSamples'] = BlenderOpts['rendSamples']
-    scene['viewSamples'] = BlenderOpts['viewSamples']
-    scene['scattering'] = BlenderOpts['scattering']
-    scene['viewtransform'] = BlenderOpts['viewtransform']
-    scene['filmexposure'] = BlenderOpts['filmexposure']
-
-    corto['savepath'] = os.path.normpath(BlenderOpts['savepath'])
-
+    #scene['encoding'] = BlenderOpts['encoding']
+    #scene['rendSamples'] = BlenderOpts['rendSamples']
+    #scene['viewSamples'] = BlenderOpts['viewSamples']
+    #scene['scattering'] = BlenderOpts['scattering']
+    #scene['viewtransform'] = BlenderOpts['viewtransform']
+    #scene['filmexposure'] = BlenderOpts['filmexposure']
+    
+    # Handle invalid savepath specification defaulting to "output" folder
+    if 'savepath' in BlenderOpts and os.path.isdir(os.path.normpath(BlenderOpts['savepath'])):
+        corto['savepath'] = os.path.normpath(BlenderOpts['savepath'])
+    else:
+        print('Specified savepath not found. Defaulting to repository "output" folder:')
+        currentPath = os.path.dirname(os.path.normpath(__file__)) # Save current path
+        os.chdir('../output') # Go to output path
+        corto['savepath'] = os.path.abspath(os.getcwd()) # Save savepath into corto list
+        os.chdir(currentPath) # Return to script execution directory
+        print(corto['savepath'])
+            
     # CAMERA, TARGET and ILLUMINATION
     scenarioData['rStateCam']    = np.array(SceneData['rStateCam'])    
     scenarioData['rTargetBody']  = np.array(SceneData['rTargetBody'])
