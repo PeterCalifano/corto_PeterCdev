@@ -292,14 +292,13 @@ if __name__ == '__main__': # Blender call makes this script to run as main
         print('main entered')
         if configExt == '.json':
             print('Using JSON config mode')
-            time.sleep(1)   
             body, geometry, scene, corto, scenarioData = read_parse_configJSON(configFilePath)
+            time.sleep(1)
 
         elif configExt == '.txt':
             print('Using .txt config mode')
-            #time.sleep(1)   
             body, geometry, scene, corto = read_parse_configTXT(configFilePath)
-            print('Passed. EXIT')
+            time.sleep(1)   
         else:
             raise Exception('Invalid configuration file extension. Supported: [.json, .txt]')
 
