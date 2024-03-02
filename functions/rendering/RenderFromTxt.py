@@ -38,7 +38,7 @@ if ('-c' in sys.argv) or ('--config' in sys.argv):
     # Get subsequent input (the config file path)
     configFilePath = sys.argv[(index[0]+1)]
     # Normalize path to UNIX-style
-    configFilePath = os.path.normpath(configFilePath) 
+    configFilePath = os.path.abspath(configFilePath) 
     # Load file. Throw error if not found
     print('\nLoading config file from:', configFilePath,'\n')
     if not(os.path.isfile(configFilePath)):
@@ -60,7 +60,6 @@ else:
     time.sleep(1)
 
 
-
 ###### [2] PARSER FUNCTIONS DEFINITIONS [2]###### 
 
 def read_parse_configJSON(configJSONfilePath):
@@ -72,18 +71,28 @@ def read_parse_configJSON(configJSONfilePath):
     data = {}
     
     # Load JSON file parsing numbers
+    if os.path.isfile(configJSONfilePath):
+        print('CONFIG file FOUND, loading...')
+    else:
+        raise Exception('CONFIG file NOT FOUND. Check input path.')
+
     with open(configJSONfilePath, 'r') as json_file:
-        ConfigDataJSONdict = json.load(json_file) # Load JSON as dict
+        try:
+            ConfigDataJSONdict = json.load(json_file) # Load JSON as dict
+        except Exception as exceptInstance:
+            raise Exception('ERROR occurred:', exceptInstance.args)
+        print('Config file: LOADED.')
 
     if isinstance(ConfigDataJSONdict, dict):
         # Get JSONdict data
         CameraData = ConfigDataJSONdict['CameraData']
         BlenderOpts = ConfigDataJSONdict['BlenderOpts']
         SceneData = ConfigDataJSONdict['SceneData']
-
     elif isinstance(ConfigDataJSONdict, list):
         # Pretty Printing has been enabled in MATLAB I guess...
         raise Exception('Decoded JSON as list not yet handled by this implementation. If JSON comes from MATLAB jsonencode(), make sure you are providing a struct() as input and not a cell.')
+    else: 
+        raise Exception('ERROR: incorrect JSON file formatting')
 
     # Manual Mapping to current CORTO version (26 Feb 2024). DEVNOTE: not optimal. It should be improved.
     # Required fields in:
@@ -148,6 +157,7 @@ def read_parse_configJSON(configJSONfilePath):
         print(f"{key}: {value}")
     print('')
 
+    json_file.close()
     return body, geometry, scene, corto, data
 
 def read_parse_configTXT(configTXTfilePath):
@@ -194,6 +204,8 @@ def read_parse_configTXT(configTXTfilePath):
     for key, value in corto.items():
         print(f"{key}: {value}")
     print('')
+    
+    file.close()
     return body, geometry, scene, corto
 
 ###### [1] SETUP FUNCTIONS DEFINITIONS [1]######
@@ -289,15 +301,16 @@ def GenerateTimestamp():
 ##################### MAIN STARTS HERE ###########################
 if __name__ == '__main__': # Blender call makes this script to run as main
     try:
-        print('main entered')
         if configExt == '.json':
-            print('Using JSON config mode')
+            print('USING JSON config mode... ')
             body, geometry, scene, corto, scenarioData = read_parse_configJSON(configFilePath)
+            print('CONFIG file loading: COMPLETED')
             time.sleep(1)
 
         elif configExt == '.txt':
-            print('Using .txt config mode')
+            print('USING TXT config mode')
             body, geometry, scene, corto = read_parse_configTXT(configFilePath)
+            print('CONFIG file loading: COMPLETED')
             time.sleep(1)   
         else:
             raise Exception('Invalid configuration file extension. Supported: [.json, .txt]')
@@ -305,48 +318,50 @@ if __name__ == '__main__': # Blender call makes this script to run as main
         ######[2]  SETUP OBJ PROPERTIES [2]######
         # PeterC dev. note: ideally scale_BU should be read from the Blender model, such that input units are allowed to be in the agreed SI units, i.e. km without modifications
         # Set object names
-        CAM = bpy.data.objects["Camera"]
-        SUN = bpy.data.objects["Sun"]
-        if body['name'] == 'S1_Eros':
-            albedo = 0.15 # TBD
-            SUN_energy = 7 # TBD
-            BODY = bpy.data.objects["Eros"]
-            scale_BU = 10 
-            texture_name = 'Eros Grayscale'
-        elif body['name'] == 'S2_Itokawa':
-            albedo = 0.15 # TBD
-            SUN_energy = 5 # TBD
-            BODY = bpy.data.objects["Itokawa"]
-            scale_BU = 0.2
-            texture_name = 'Itokawa Grayscale'
-        elif body['name'] == 'S4_Bennu':
-            albedo = 0.15 # TBD
-            SUN_energy = 7 # TBD
-            BODY = bpy.data.objects["Bennu"]
-            scale_BU = 0.2
-            texture_name = 'Bennu_global_FB34_FB56_ShapeV28_GndControl_MinnaertPhase30_PAN_8bit'
-        elif body['name'] == 'S5_Didymos':
-            albedo = 0.15 # TBD
-            SUN_energy = 7 # TBD
-            BODY = bpy.data.objects["Didymos"]
-            BODY_Secondary = bpy.data.objects["Dimorphos"]
-            scale_BU = 0.2
-        elif body['name'] == 'S5_Didymos_Milani':
-            albedo = 0.15 # TBD
-            SUN_energy = 7 # TBD
-            BODY = bpy.data.objects["Didymos"]
-            BODY_Secondary = bpy.data.objects["Dimorphos"]
-            scale_BU = 0.5
-        elif body['name'] == 'S6_Moon':
-            albedo = 0.169 # TBD
-            SUN_energy = 30 # TBD
-            BODY = bpy.data.objects["Moon"]
-            scale_BU = 1 # Does nothing!
-            displacemenet_name = 'ldem_64' # Does nothing!
-            texture_name = 'lroc_color_poles_64k' # Does nothing!
-        else:
-            raise Exception('Input model name',body['name'],'not found.')
-
+        try:
+            CAM = bpy.data.objects["Camera"]
+            SUN = bpy.data.objects["Sun"]
+            if body['name'] == 'S1_Eros':
+                albedo = 0.15 # TBD
+                SUN_energy = 7 # TBD
+                BODY = bpy.data.objects["Eros"]
+                scale_BU = 10 
+                texture_name = 'Eros Grayscale'
+            elif body['name'] == 'S2_Itokawa':
+                albedo = 0.15 # TBD
+                SUN_energy = 5 # TBD
+                BODY = bpy.data.objects["Itokawa"]
+                scale_BU = 0.2
+                texture_name = 'Itokawa Grayscale'
+            elif body['name'] == 'S4_Bennu':
+                albedo = 0.15 # TBD
+                SUN_energy = 7 # TBD
+                BODY = bpy.data.objects["Bennu"]
+                scale_BU = 0.2
+                texture_name = 'Bennu_global_FB34_FB56_ShapeV28_GndControl_MinnaertPhase30_PAN_8bit'
+            elif body['name'] == 'S5_Didymos':
+                albedo = 0.15 # TBD
+                SUN_energy = 7 # TBD
+                BODY = bpy.data.objects["Didymos"]
+                BODY_Secondary = bpy.data.objects["Dimorphos"]
+                scale_BU = 0.2
+            elif body['name'] == 'S5_Didymos_Milani':
+                albedo = 0.15 # TBD
+                SUN_energy = 7 # TBD
+                BODY = bpy.data.objects["Didymos"]
+                BODY_Secondary = bpy.data.objects["Dimorphos"]
+                scale_BU = 0.5
+            elif body['name'] == 'S6_Moon':
+                albedo = 0.169 # TBD
+                SUN_energy = 30 # TBD
+                BODY = bpy.data.objects["Moon"]
+                scale_BU = 1 # Does nothing!
+                displacemenet_name = 'ldem_64' # Does nothing!
+                texture_name = 'lroc_color_poles_64k' # Does nothing!
+            else:
+                raise Exception('Input model name',body['name'],'not found.')
+        except Exception as inst:
+            raise Exception('ERROR occurred during objects properties setup:', inst.args)
         # CAM properties
         CAM.data.type = 'PERSP'
         CAM.data.lens_unit = 'FOV'
@@ -395,57 +410,63 @@ if __name__ == '__main__': # Blender call makes this script to run as main
         bpy.context.scene.cycles.preview_samples = scene['viewSamples']
 
         ######[3]  EXTRACT DATA FROM CONFIG FILE [3]######
+        try:
+            print('DATA Loading: STARTED')
+            if configExt == '.json':
+                # ID
+                ID_pose = scenarioData['ID']
+                HOW_MANY_FRAMES = len(ID_pose)
+                print(HOW_MANY_FRAMES)
+                # Body
+                R_pos_BODY = scenarioData['rTargetBody']*scale_BU # (BU) 
+                R_q_BODY = scenarioData['qFromTFtoIN'] #from_txt[:,4:8] # (-) 
+                # Camera
+                R_pos_SC = scenarioData['rStateCam']*scale_BU #from_txt[:,8:11]*scale_BU # (BU) 
+                R_q_SC = scenarioData['qFromCAMtoIN'] # from_txt[:,11:15] # (-) 
+                # Sun 
+                R_pos_SUN = scenarioData['rSun'] #from_txt[:,15:18] # (BU) 
+            elif configExt == '.txt':
+                    #I/O pathsSSSSS
+                home_path = bpy.path.abspath("//")
+                txt_path = os.path.join(home_path, geometry['name'] + '.txt')
+                n_rows = len(open(os.path.join(txt_path)).readlines())
+                n_col = 18 # HARDCODED: PeterC comment: SPLIT is critically dependend on this value!
+                HOW_MANY_FRAMES = n_rows
+                from_txt = np.zeros((n_rows,n_col))
 
-        if configExt == '.json':
-            # ID
-            ID_pose = scenarioData['ID']
-            # Body
-            R_pos_BODY = scenarioData['rTargetBody']*scale_BU # (BU) 
-            R_q_BODY = scenarioData['qFromTFtoIN'] #from_txt[:,4:8] # (-) 
-            # Camera
-            R_pos_SC = scenarioData['rStateCam']*scale_BU #from_txt[:,8:11]*scale_BU # (BU) 
-            R_q_SC = scenarioData['qFromCAMtoIN'] # from_txt[:,11:15] # (-) 
-            # Sun 
-            R_pos_SUN = scenarioData['rSun'] #from_txt[:,15:18] # (BU) 
+                file = open(os.path.join(txt_path),'r',newline = '')
+                ii=0
+                for line in file:
+                    fields = line.split(" ")
+                    for jj in range(0,n_col,1):
+                        from_txt[ii,jj] = float(fields[jj])
+                    ii = ii+1
 
+                file.close()
+                # [0] ID or ET
+                # [1,2,3] Body pos [BU] and [4,5,6,7] orientation [-]
+                # [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-] # TO CHECK: WHICH QUATERNION CONVENTION?
+                # [15,16,17] Sun pos [BU]
 
-        elif configExt == '.txt':
-                #I/O pathsSSSSS
-            home_path = bpy.path.abspath("//")
-            txt_path = os.path.join(home_path, geometry['name'] + '.txt')
-            n_rows = len(open(os.path.join(txt_path)).readlines())
-            n_col = 18 # HARDCODED: PeterC comment: SPLIT is critically dependend on this value!
+                # ID
+                ID_pose = from_txt[:,0]
+                # Body
+                R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
+                R_q_BODY = from_txt[:,4:8] # (-) 
+                # Camera
+                R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
+                R_q_SC = from_txt[:,11:15] # (-) 
+                # Sun 
+                R_pos_SUN = from_txt[:,15:18] # (BU) 
 
-            from_txt = np.zeros((n_rows,n_col))
+            print('DATA Loading: COMPLETED')
+        except Exception as inst:
+            raise Exception('ERROR occurred during DATA formatting:', inst.args)
 
-            file = open(os.path.join(txt_path),'r',newline = '')
-            ii=0
-            for line in file:
-                fields = line.split(" ")
-                for jj in range(0,n_col,1):
-                    from_txt[ii,jj] = float(fields[jj])
-                ii = ii+1
-
-            file.close()
-            # [0] ID or ET
-            # [1,2,3] Body pos [BU] and [4,5,6,7] orientation [-]
-            # [8,9,10] Camera pos [BU] and [11,12,13,14] orientation [-] # TO CHECK: WHICH QUATERNION CONVENTION?
-            # [15,16,17] Sun pos [BU]
-
-            # ID
-            ID_pose = from_txt[:,0]
-            # Body
-            R_pos_BODY = from_txt[:,1:4]*scale_BU # (BU) 
-            R_q_BODY = from_txt[:,4:8] # (-) 
-            # Camera
-            R_pos_SC = from_txt[:,8:11]*scale_BU # (BU) 
-            R_q_SC = from_txt[:,11:15] # (-) 
-            # Sun 
-            R_pos_SUN = from_txt[:,15:18] # (BU) 
 
 
         ### CYCLIC RENDERINGS ###
-
+        print('RENDERING routine: STARTED')
         output_timestamp = GenerateTimestamp()
         output_folderName = body['name'] + '_' + output_timestamp
 
@@ -455,25 +476,31 @@ if __name__ == '__main__': # Blender call makes this script to run as main
 
         MakeDir(output_savepath)
         MakeDir(output_img_savepath)
-        if scene['labelDepth'] == 1 or scene['labelID'] == 1 or scene['labelSlopes'] == 1:
-            MakeDir(output_label_savepath)
-            if scene['labelDepth'] == 1:
-                MakeDir(os.path.join(output_label_savepath,'depth'))
-            if scene['labelID'] == 1:
-                MakeDir(os.path.join(output_label_savepath,'IDmask'))
-                bpy.data.scenes["Scene"].node_tree.nodes["MaskOutput"].base_path = output_label_savepath
-                bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[0].path="\IDmask\Mask_1\######" 
-                bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[1].path="\IDmask\Mask_1_shadow\######" 
-                bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[2].path="\IDmask\Mask_2\######"
-                bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[3].path="\IDmask\Mask_2_shadow\######"
-            if scene['labelSlopes'] == 1:
-                MakeDir(os.path.join(output_label_savepath,'slopes'))
-                bpy.data.scenes["Scene"].node_tree.nodes["SlopeOutput"].base_path = output_label_savepath
-                bpy.data.scenes["Scene"].node_tree.nodes['SlopeOutput'].file_slots[0].path="\slopes\######" 
+
+        try:
+            if scene['labelDepth'] == 1 or scene['labelID'] == 1 or scene['labelSlopes'] == 1:
+                MakeDir(output_label_savepath)
+                if scene['labelDepth'] == 1:
+                    MakeDir(os.path.join(output_label_savepath,'depth'))
+                if scene['labelID'] == 1:
+                    MakeDir(os.path.join(output_label_savepath,'IDmask'))
+                    bpy.data.scenes["Scene"].node_tree.nodes["MaskOutput"].base_path = output_label_savepath
+                    bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[0].path="\IDmask\Mask_1\######" 
+                    bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[1].path="\IDmask\Mask_1_shadow\######" 
+                    bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[2].path="\IDmask\Mask_2\######"
+                    bpy.data.scenes["Scene"].node_tree.nodes['MaskOutput'].file_slots[3].path="\IDmask\Mask_2_shadow\######"
+                if scene['labelSlopes'] == 1:
+                    MakeDir(os.path.join(output_label_savepath,'slopes'))
+                    bpy.data.scenes["Scene"].node_tree.nodes["SlopeOutput"].base_path = output_label_savepath
+                    bpy.data.scenes["Scene"].node_tree.nodes['SlopeOutput'].file_slots[0].path="\slopes\######" 
+        except:
+            print('Scene labels assignments failed: SKIPPING')
 
         ## Cyclic rendering
         SetKeyframe(1)
-        for ii in range(0, n_rows,1):
+        print('RENDERING of', HOW_MANY_FRAMES, ': STARTING...')
+        time.sleep(0.5)
+        for ii in range(0, HOW_MANY_FRAMES,1):
             SetKeyframe(ii+1)
             print('---------------Preparing for case: ',ii,'---------------')
             print('Position bodies')
@@ -494,5 +521,5 @@ if __name__ == '__main__': # Blender call makes this script to run as main
 
                 # ADD SCENE FIGURE DISPLAY AND UPDATING AFTER EACH RENDERING  
                 # MAKE IT OPTIONAL  
-    except (RuntimeError, TypeError, NameError, ValueError) as err:
-        raise ('Error occurred during RenderFromTxt execution from Blender:\n', err)
+    except Exception as errInst:
+        raise ('Error occurred during RenderFromTxt execution from Blender:\n', errInst.args)

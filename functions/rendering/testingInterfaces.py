@@ -149,7 +149,7 @@ def read_parse_configJSON(configJSONfilePath):
     return body, geometry, scene, corto, scenarioData
 
 if __name__ == '__main__':
-    configJSONfilePath = os.path.abspath('C:\\devDir\\corto_PeterCdev\\functions\\rendering\\CORTO_CONFIG.json')
+    configJSONfilePath = os.path.abspath('c:\\Users\\pietr\\OneDrive - Politecnico di Milano\\PoliMi - LM\MATLABwideCodes\\MATLABcodes\\testHarnesses\\InputConfig2CORTO_20240301_2150\\CORTO_CONFIG.json')
     body, geometry, scene, corto, scenarioData = read_parse_configJSON(configJSONfilePath)
     scale_BU = 1
     # ID
