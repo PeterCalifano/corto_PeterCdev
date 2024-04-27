@@ -133,12 +133,12 @@ def read_parse_configJSON(configJSONfilePath):
         os.chdir(currentPath) # Return to script execution directory
         print(corto['savepath'])
 
-    # CAMERA, TARGET and ILLUMINATION
+    # CAMERA, TARGET and ILLUMINATIONs
     data['rStateCam']    = np.array(SceneData['rStateCam'])    
     data['rTargetBody']  = np.array(SceneData['rTargetBody'])
     data['rSun']         = np.array(SceneData['rSun'])         
-    data['qFromCAMtoIN'] = np.array(SceneData['qFromCAMtoIN'])
-    data['qFromTFtoIN']  = np.array(SceneData['qFromTFtoIN'])  
+    data['qFromCAMtoIN'] = np.array(SceneData['qFromINtoCAM'])
+    data['qFromTFtoIN']  = np.array(SceneData['qFromINtoTF'])  
     data['ID']           = np.arange(len(SceneData['rStateCam'])).flatten()
 
     geometry['ii0'] = 0 # Initial index for rendering
@@ -282,14 +282,18 @@ def SaveDepth(ii):
     """Obtains depth map from Blender render.
     return: The depth map of the rendered camera view as a numpy array of size (H,W).
     """
-    z = bpy.data.images['Viewer Node']
-    w, h = z.size
-    dmap = np.array(z.pixels[:], dtype=np.float16) # convert to numpy array
-    dmap = np.reshape(dmap, (h, w, 4))[:,:,0]
+    z = bpy.data.images['Viewer Node'] # Get output array from Blender 
+    height, width = z.size
+    print("Got Depth map of size: ", z.size)
+
+    dmap = np.array(z.pixels, dtype=np.int16) # convert to numpy array
+    # Reshape into image array as [H, W, Depth]
+    dmap = np.reshape(dmap, (height, width, 4))[:,:,0]
+    
     dmap = np.rot90(dmap, k=2)
     dmap = np.fliplr(dmap)
     txtname = '{num:06d}'
-    np.savetxt(os.path.join(depth_path, txtname.format(num=(ii+1)) + '.txt'), dmap, delimiter=' ',fmt='%.5f')
+    np.savetxt(os.path.join(output_label_savepath, 'depth', txtname.format(num=(ii+1)) + '.txt'), dmap, delimiter=' ',fmt='%.5f')
     return
 
 def GenerateTimestamp():
@@ -408,6 +412,9 @@ if __name__ == '__main__': # Blender call makes this script to run as main
         bpy.context.scene.cycles.device = 'GPU'
         bpy.context.scene.cycles.samples = scene['rendSamples']
         bpy.context.scene.cycles.preview_samples = scene['viewSamples']
+
+        # Set the device_type
+        bpy.context.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
 
         ######[3]  EXTRACT DATA FROM CONFIG FILE [3]######
         try:
