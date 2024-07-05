@@ -362,6 +362,12 @@ if __name__ == '__main__': # Blender call makes this script to run as main
                 scale_BU = 1 # Does nothing!
                 displacement_name = 'ldem_64' # Does nothing!
                 texture_name = 'lroc_color_poles_64k' # Does nothing!
+            elif body['name'] == 'S7_MoonFlat':
+                albedo = 0.169 # TBD
+                SUN_energy = 30 # TBD
+                BODY = bpy.data.objects["Moon"]
+                scale_BU = 1 # Does nothing!
+                texture_name = 'lroc_color_poles_64k' # Does nothing!
             else:
                 raise Exception('Input model name',body['name'],'not found.')
         except Exception as inst:
