@@ -121,6 +121,7 @@ def read_parse_configJSON(configJSONfilePath):
     scene['filmexposure']  = BlenderOpts['filmexposure']
 
     corto['savepath'] = os.path.normpath(BlenderOpts['savepath'])
+    corto['redirect_output'] = BlenderOpts.get('redirect_output', False)
 
     # Handle invalid savepath specification defaulting to "output" folder
     if 'savepath' in BlenderOpts and os.path.isdir(os.path.normpath(BlenderOpts['savepath'])):
@@ -480,15 +481,24 @@ if __name__ == '__main__': # Blender call makes this script to run as main
 
         ### CYCLIC RENDERINGS ###
         print('RENDERING routine: STARTED')
-        output_timestamp = GenerateTimestamp()
-        output_folderName = body['name'] + '_' + output_timestamp
 
-        output_savepath = os.path.join(corto['savepath'],output_folderName)
-        output_img_savepath = os.path.join(output_savepath,'img')
-        output_label_savepath = os.path.join(output_savepath,'label')
+        if corto['redirect_output'] == False:
+            output_timestamp = GenerateTimestamp()
+            output_folderName = body['name'] + '_' + output_timestamp
+            output_savepath = os.path.join(corto['savepath'],output_folderName)
+            output_img_savepath = os.path.join(output_savepath,'img')
+            output_label_savepath = os.path.join(output_savepath,'label')
+        else:
+            output_savepath = corto['savepath']
+            output_img_savepath = os.path.join(output_savepath,'images')
+            output_label_savepath = os.path.join(output_savepath,'label')
 
-        MakeDir(output_savepath)
-        MakeDir(output_img_savepath)
+
+        if not(os.path.isdir(output_savepath)):
+            MakeDir(output_savepath)
+
+        if not(os.path.isdir(output_img_savepath)):
+            MakeDir(output_img_savepath)
 
         try:
             if scene['labelDepth'] == 1 or scene['labelID'] == 1 or scene['labelSlopes'] == 1:
