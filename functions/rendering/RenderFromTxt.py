@@ -336,7 +336,7 @@ if __name__ == '__main__': # Blender call makes this script to run as main
                 albedo = 0.15 # TBD
                 SUN_energy = 5 # TBD
                 BODY = bpy.data.objects["Itokawa"]
-                scale_BU = 0.2
+                scale_BU = 1.0 # MODIFIED, was 0.2
                 texture_name = 'Itokawa Grayscale'
             elif body['name'] == 'S4_Bennu':
                 albedo = 0.15 # TBD
@@ -372,6 +372,7 @@ if __name__ == '__main__': # Blender call makes this script to run as main
             else:
                 raise Exception('Input model name',body['name'],'not found.')
         except Exception as inst:
+            print('ERROR occurred during objects properties setup:', inst.args)
             raise Exception('ERROR occurred during objects properties setup:', inst.args)
         # CAM properties
         CAM.data.type = 'PERSP'
@@ -475,6 +476,7 @@ if __name__ == '__main__': # Blender call makes this script to run as main
 
             print('DATA Loading: COMPLETED')
         except Exception as inst:
+            print('ERROR occurred during DATA formatting:', inst.args)
             raise Exception('ERROR occurred during DATA formatting:', inst.args)
 
 
@@ -545,4 +547,5 @@ if __name__ == '__main__': # Blender call makes this script to run as main
                 # ADD SCENE FIGURE DISPLAY AND UPDATING AFTER EACH RENDERING  
                 # MAKE IT OPTIONAL  
     except Exception as errInst:
+        print('Error occurred during RenderFromTxt execution from Blender:\n', errInst.args)
         raise ('Error occurred during RenderFromTxt execution from Blender:\n', errInst.args)
