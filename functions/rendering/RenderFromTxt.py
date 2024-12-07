@@ -336,7 +336,7 @@ if __name__ == '__main__': # Blender call makes this script to run as main
                 albedo = 0.15 # TBD
                 SUN_energy = 5 # TBD
                 BODY = bpy.data.objects["Itokawa"]
-                scale_BU = 1.0 # MODIFIED, was 0.2
+                scale_BU = 0.2 # MODIFIED, was 0.2
                 texture_name = 'Itokawa Grayscale'
             elif body['name'] == 'S4_Bennu':
                 albedo = 0.15 # TBD
