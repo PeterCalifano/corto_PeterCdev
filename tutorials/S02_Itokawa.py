@@ -27,6 +27,10 @@ State = corto.State(scene = scene_name, geometry = geometry_name, body = body_na
 State.add_path('texture_path',os.path.join(State.path["input_path"],'body','texture','Itokawa Grayscale.jpg'))
 State.add_path('uv_data_path',os.path.join(State.path["input_path"],'body','uv data','uv_data.json'))
 
+# Set rendering properties
+State.properties_rendering['device'] = 'GPU'
+State.properties_rendering['engine'] = 'CYCLES'
+
 ### (2) SETUP THE SCENE ###
 # Setup bodies
 cam = corto.Camera('WFOV_Camera', State.properties_cam)
@@ -53,10 +57,14 @@ corto.Compositing.create_depth_branch(tree,render_node) # Create depth branch
 corto.Compositing.create_slopes_branch(tree,render_node,State) # Create slopes branch
 corto.Compositing.create_maskID_branch(tree,render_node,State) # Create ID mask branch
 
+
+# Print options
+print('Rendering using device:', rendering_engine.get_device())
+
 ### (5) GENERATION OF IMG-LBL PAIRS ###
 body.set_scale(np.array([1, 1, 1])) # adjust body scale for better test renderings
 
-n_img = 1 # Render the first "n_img" images
+n_img = 5 # Render the first "n_img" images
 for idx in range(0,n_img):
     ENV.PositionAll(State,index=idx)
     ENV.RenderOne(cam, State, index=idx, depth_flag = True)
