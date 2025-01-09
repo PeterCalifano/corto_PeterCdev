@@ -134,7 +134,9 @@ print("Waiting for data...\n")
 receiving_flag = 1
 ii = 0
 while receiving_flag:
+
     data, addr = r.recvfrom(512)
+
     numOfValues = int(len(data) / 8)
     data = struct.unpack('>' + 'd' * numOfValues, data)
     n_bodies = len(data)/7-2 #Number of bodies apart from CAM and SUN
