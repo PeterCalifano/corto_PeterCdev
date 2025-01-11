@@ -11,8 +11,12 @@ import time
 import numpy as np
 import bpy
 import mathutils
-import sys
+import sys, os
 import pickle
+import logging
+
+logging.getLogger('bpy.context').setLevel(logging.WARNING)  # Or logging.ERROR
+bpy.app.debug = False  # Ensure debug mode is off
 
 output_path = '/home/peterc/devDir/projects-DART/milani-gnc/artifacts/.tmpMilaniBlender'
 
@@ -118,28 +122,51 @@ def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
 
 #### (5) ESTABLISH UDP/TCP CONNECTION ####
 print("Starting the UDP/TCP server...\n")
-r = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#print("Starting the TCP/IP server...\n")
+
+#r = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+r = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-r.bind((address, port_M2B))
-s.bind((address, port_B2M))
+try:
+    r.bind((address, port_M2B))
+    print(f"Socket successfully bound to {address}:{port_M2B}")
+except OSError as e:
+    print(f"Failed to bind socket: {e}")
+
+try:
+    s.bind((address, port_B2M))
+    print(f"Socket successfully bound to {address}:{port_B2M}")
+except OSError as e:
+    print(f"Failed to bind socket: {e}")
+
 print(f"Binding successful. Starting listening to connection on port", port_M2B, "\n")
 print(f"Data will be sent through port:", port_B2M, "\n")
 
+print('Client connected from', address, ' as sender\n')
+
 s.listen(5)
-(clientsocket, address) = s.accept()
+(clientsocket_send, address) = s.accept()
+print('Client connected from', address, ' as receiver\n')
 
 print("Waiting for data...\n")
 
 #### (6) RECEIVE DATA AND RENDERING ####
+# TODO remove render to avoid overhead while debugging the interface
 
 receiving_flag = 1
 ii = 0
 while receiving_flag:
-    data, addr = r.recvfrom(512)
+    #data, addr = r.recvfrom(512)
+    data, addr = r.recvfrom(28*8) 
     numOfValues = int(len(data) / 8)
-    data = struct.unpack('>' + 'd' * numOfValues, data)
+    print(f"Received data from {addr} with {numOfValues} values\n")
+    data = struct.unpack('>' + 'd' * numOfValues, data) # Unpack bytes in data to double big-endian
+    print('Data received: ', data)
+    assert len(data) == 28, "ACHTUNG: data size is not as expected"
     n_bodies = len(data)/7-2 #Number of bodies apart from CAM and SUN
+    print(f"Number of bodies: {n_bodies}\n")
     # Extract the PQ vectors from data received from cuborg
     PQ_Sun = data[0:7]
     PQ_SC = data[7:14]
@@ -152,14 +179,40 @@ while receiving_flag:
         print('BODY (' + str(jj) + '):   POS: ' +  str(PQ_Bodies[int(jj),0:3]) + ' - Q ' + str(PQ_Bodies[int(jj),3:7]))
     #Position all bodies in the scene
     PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
-    #Take a picture
-    Render(ii)
+
+    # Redirect stdout and stderr
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    try:
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+        # Take a picture without printing logs...
+        Render(ii)
+    finally:
+        # Restore stdout and stderr
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
     # Read the pixels from the saved image
-    img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) # DEVNOTE: really? saving to disk and then loading in the same caller script to pass over TCP? D: it doesn't make sense!
-    img_reshaped_vec = img_read.pixels[:]
+    img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
+    img_reshaped_vec = img_read.pixels[:] # Flatten the RGBA image to a vector
     # Pack the RGBA image as vector and transmit over TCP
     format_pack = '@' + str(len(img_reshaped_vec)) + 'd'
+    print("Packing image vector as bytes...\n")
     img_pack = struct.pack(format_pack,*img_reshaped_vec)
-    clientsocket.send(img_pack)
+    print("Sending image vector to client...\n")
+    clientsocket_send.send(img_pack)
+    print("Image sent correctly\n")
+    
+    print('------------------ Summary of operations for debug ------------------')
+    print(f"Received data from {addr} with {numOfValues} values\n")
+    print('Data received: ', data)
+    print(f"Number of bodies: {n_bodies}\n")
+    print('SUN:   POS ' + str(PQ_Sun[0:3]) + ' - Q ' + str(PQ_Sun[3:7]))
+    print('SC:    POS ' + str(PQ_SC[0:3]) + ' - Q ' + str(PQ_SC[3:7]))
+    for jj in np.arange(0, n_bodies):
+        print('BODY (' + str(jj) + '):   POS: ' +
+              str(PQ_Bodies[int(jj), 0:3]) + ' - Q ' + str(PQ_Bodies[int(jj), 3:7]))
+        
     #continue on the iteration
     ii = ii + 1
