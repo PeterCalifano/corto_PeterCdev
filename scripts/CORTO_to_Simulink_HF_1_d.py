@@ -117,11 +117,14 @@ def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
     return
 
 #### (5) ESTABLISH UDP/TCP CONNECTION ####
+print("Starting the UDP/TCP server...\n")
 r = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 r.bind((address, port_M2B))
 s.bind((address, port_B2M))
+print(f"Binding successful. Starting listening to connection on port", port_M2B, "\n")
+print(f"Data will be sent through port:", port_B2M, "\n")
 
 s.listen(5)
 (clientsocket, address) = s.accept()
