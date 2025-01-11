@@ -16,7 +16,7 @@ import yaml
 
 #### (4) FUNCTION DEFINITIONS #### # TODO (PC) rework functions... they were coded assuming global variables
 def Render(ii):
-    name = '\{}.png'.format(str(int(ii)).zfill(6))
+    name = '{:06d}.png'.format(int(ii))
     bpy.context.scene.render.filepath = output_path + '/' + name
     bpy.ops.render.render(write_still=1)
     return

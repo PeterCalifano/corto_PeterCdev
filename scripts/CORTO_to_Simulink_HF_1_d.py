@@ -14,6 +14,8 @@ import mathutils
 import sys
 import pickle
 
+output_path = '/home/peterc/devDir/projects-DART/milani-gnc/artifacts/.tmpMilaniBlender'
+
 #### (1) STATIC PARAMETERS ####
 
 #NAVCAM
@@ -27,15 +29,13 @@ compression = 15 #[-], Compression factor
 
 #RENDERING ENGINE
 bpy.context.scene.render.engine = 'CYCLES'
-bpy.context.scene.cycles.device = 'CPU'
-bpy.context.scene.cycles.samples = 4 # number of samples
+bpy.context.scene.cycles.device = 'GPU' # 'CPU' or 'GPU'
+bpy.context.scene.cycles.samples = 64 # number of samples
 bpy.context.scene.cycles.diffuse_bounces = 0 #To avoid diffused light from D1 to D2. (4) default
 bpy.context.scene.render.tile_x = 64 # tile size(x)
 bpy.context.scene.render.tile_y = 64 # tile size(y)
 
 #OTHERS
-
-output_path = 'C:\\Users\\Pugliatti Mattia\\Documents\\milaniGNC_BUFFER'
 
 n_zfills = 6 #Number of digits used in the image name
 model_name_1 = 'D1'
@@ -100,7 +100,7 @@ SUN.rotation_quaternion = [1, 0, 0, 0]
 
 #### (4) FUNCTION DEFINITIONS ####
 def Render(ii):
-    name = '\{}.png'.format(str(int(ii)).zfill(6))
+    name = '{:06d}.png'.format(int(ii))
     bpy.context.scene.render.filepath = output_path + '/' + name
     bpy.ops.render.render(write_still=1)
     return
