@@ -32,14 +32,14 @@ bpy.context.scene.render.engine = 'CYCLES'
 bpy.context.scene.cycles.device = 'GPU' # 'CPU' or 'GPU'
 bpy.context.scene.cycles.samples = 64 # number of samples
 bpy.context.scene.cycles.diffuse_bounces = 0 #To avoid diffused light from D1 to D2. (4) default
-bpy.context.scene.render.tile_x = 64 # tile size(x)
-bpy.context.scene.render.tile_y = 64 # tile size(y)
+bpy.context.scene.cycles.tile_size = 64  # tile size(x)
+#bpy.context.scene.cycles.tile_y = 64  # tile size(y)
 
 #OTHERS
 
 n_zfills = 6 #Number of digits used in the image name
-model_name_1 = 'D1'
-model_name_2 = 'D2'
+model_name_1 = 'Didymos'
+model_name_2 = 'Dimorphos'
 sun_energy = 2 #Energy value of the sun-light in Blender
 specular_factor = 0 #Specularity value for the sun-light in Blender
 address = "0.0.0.0"
@@ -48,7 +48,7 @@ port_B2M = 30001 #  Port from Blender to Matlab
 
 #### (2) SCENE SET UP ####
 CAM = bpy.data.objects["Camera"]
-SUN = bpy.data.objects["Light"]
+SUN = bpy.data.objects["Sun"]
 BODY_1 = bpy.data.objects[model_name_1]
 BODY_2 = bpy.data.objects[model_name_2]
 
@@ -152,11 +152,11 @@ while receiving_flag:
     #Take a picture
     Render(ii)
     # Read the pixels from the saved image
-    img_read = bpy.data.images.load(filepath = output_path + '/' + '\{}.png'.format(str(int(ii)).zfill(6)))
+    img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) # DEVNOTE: really? saving to disk and then loading in the same caller script to pass over TCP? D: it doesn't make sense!
     img_reshaped_vec = img_read.pixels[:]
     # Pack the RGBA image as vector and transmit over TCP
     format_pack = '@' + str(len(img_reshaped_vec)) + 'd'
-    img_pack = struct.pack(format_pack,*img_reshaped_vec);
+    img_pack = struct.pack(format_pack,*img_reshaped_vec)
     clientsocket.send(img_pack)
     #continue on the iteration
     ii = ii + 1
