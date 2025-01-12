@@ -28,11 +28,24 @@ import numpy as np
 import bpy
 import sys, os
 import numpy as np
-import yaml 
+
+# Check if yaml is installed
+try:
+    import yaml 
+except ImportError:
+    print("PyYAML is not installed. Please install it before using this script.")
+    print("To do so, first find which interpreted Blender is using by running in Blender scripting section:")
+    print("import sys")
+    print("print(sys.executable)")
+    print("Then, in the terminal, run:")
+    print("/path/to/blender/python -m pip install pyyaml")
+    print("Finally, check if the installation was successful by running:")
+    print("/path/to/blender/python -m pip show pyyaml")
+    sys.exit(1)
 
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
-CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yaml")
+CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yml")
 
 # Load the YAML configuration
 with open(CORTO_SLX_CONFIG_PATH, "r") as file:
@@ -112,7 +125,7 @@ try:
     # Check if output_path exists, if not create it
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-        
+
     #### (2) SCENE SET UP ####
     CAM = bpy.data.objects["Camera"]
     SUN = bpy.data.objects["Sun"]
