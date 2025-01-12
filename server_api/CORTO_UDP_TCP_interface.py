@@ -29,7 +29,7 @@ import bpy
 import sys, os
 import numpy as np
 
-# Check if yaml is installed
+# Check if yaml is installed and attempt automatic installation if not
 try:
     import yaml 
 except ImportError:
@@ -41,7 +41,36 @@ except ImportError:
     print("/path/to/blender/python -m pip install pyyaml")
     print("Finally, check if the installation was successful by running:")
     print("/path/to/blender/python -m pip show pyyaml")
-    sys.exit(1)
+
+    print("\n\nBut... since PC likes to make everything automagic, let's try to install it for you. It will likely work only for Linux :)")
+    try:
+        import subprocess
+        import sys
+        import os
+
+        # Get the Python interpreter path used by Blender
+        blender_python_path = sys.executable
+        
+        # Ensure pip is installed and up-to-date using the Python interpreter used by Blender
+        subprocess.check_call([blender_python_path, "-m", "ensurepip", "--upgrade"])
+        
+        # Install PyYAML using the Python interpreter used by Blender
+        subprocess.check_call([blender_python_path, "-m", "pip", "install", "pyyaml"])
+
+        # Check if the installation was successful
+        subprocess.check_call([blender_python_path, "-m", "pip", "show", "pyyaml"])
+        
+        # Import yaml
+        import yaml
+        print("PyYAML was successfully installed and imported :D")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Automatic installation failed. Error details: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Automatic installation failed. Error details: {e}")
+        sys.exit(1)
+    
 
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
