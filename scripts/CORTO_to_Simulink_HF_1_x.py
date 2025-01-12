@@ -62,7 +62,7 @@ def main():
     model_name_2 = 'D2'
     sun_energy = 2 #Energy value of the sun-light in Blender
     specular_factor = 0 #Specularity value for the sun-light in Blender
-    address = "0.0.0.0"
+    address = "127.0.0.1"
     port_M2B = 51001 #  Port from Matlab to Blender
     port_B2M = 30001 #  Port from Blender to Matlab
 
@@ -143,7 +143,6 @@ def main():
     while receiving_flag:
 
         data, addr = r.recvfrom(512) # TODO (PC) modify to avoid hardcoded buffer size! 
-
         numOfValues = int(len(data) / 8) # FIXME Hardcoded variable type here assuming 8 bytes! (double) 
 
         # DOUBT what does this line do? I guess it is casting the bytes buffer (uint8) to double?
