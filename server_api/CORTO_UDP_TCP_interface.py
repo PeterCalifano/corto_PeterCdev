@@ -1,56 +1,120 @@
-# This script is used to render the Didymos scene from input transmitted by the milani-gnc prototype.
-# This CORTO interface works by transmitting directly the image vector to Simulink as loaded from the output_path folder.
-# Because the input image is sent to Simulink as seen from the viewer node of the composite, the image is encoded in linear space
-# A gamma-correction is applied on Simulink. This model works with the NAVCAM_HF_1_b model, the actual image is transmitted from Blender to Simulink,
-# but it is transmitted encoded in linear space.
+"""
+    Summary:
+    This script sets up a UDP/TCP server to receive data for rendering scenes in Blender. It reads configuration parameters from a YAML file, initializes Blender scene objects, and processes incoming data to update the scene and render images. 
+    Extended Summary:
+    The order of the data in the buffer must be as follows:
+    - PQ vector of the Sun (7 doubles)
+    - PQ vector of the Spacecraft (7 doubles)
+    - PQ vector of the bodies (7 doubles per body)
+    PQ vector is defined as follows: 
+    - [position, quaternion] = [x, y, z, q0, q1, q2, q3] as requested by Blender.
+    Operations in the script:
+    - Loads configuration parameters from a YAML file.
+    - Initializes Blender scene objects (camera, sun, bodies).
+    - Sets up a UDP/TCP server to receive data.
+    - Processes incoming data to update the scene and render images.
+    - Sends rendered images back to the client.
+    Limitations:
+    - The script is designed to work with a specific number of bodies (1 or 2). Needs modifications to support more bodies.
+    - Camera and Sun are always assumed to be present in the scene and in the data buffer.
+    Raises:
+        RuntimeError: If the received data array size is not as expected.
+        ValueError: If the number of bodies computed from buffer size is not an integer.
+        ValueError: If the number of bodies is not equal to the value set in the config file.
+"""
 
 import socket
-import struct
-import time
 import numpy as np
 import bpy
 import sys, os
-import pickle
-import logging
 import numpy as np
+import yaml 
 
-output_path = '/home/peterc/devDir/projects-DART/milani-gnc/artifacts/.tmpMilaniBlender'
+# Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
+script_path = os.path.dirname(os.path.realpath(__file__))
+CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yaml")
 
-#### (1) STATIC PARAMETERS ####
+# Load the YAML configuration
+with open(CORTO_SLX_CONFIG_PATH, "r") as file:
+    config = yaml.safe_load(file)
+
+    # Get parsed configuration dicts
+    navcam_config = config.get("NavCam_params", {})
+    rendering_engine_config = config.get("RenderingEngine_params", {})
+    server_config = config.get("Server_params", {})
+    blender_model_config = config.get("BlenderModel_params", {})
+
+    # Pretty print the configuration
+    print("Configuration loaded from YAML file:")
+    print(config)
+
+#### (1) PARAMETERS ####
 try:
-    #NAVCAM
-    FOV_x = 21 # [deg], Horizontal FOV of the NAVCAM
-    FOV_y = 16 # [deg], Vertical FOV of the NAVCAM
-    sensor_size_x = 2048 #[pxl], Horizontal resolution of the images
-    sensor_size_y = 1536 #[pxl], Vertical resolution of the images
-    n_channels = 3 #[-], Number of channels of the images
-    bit_encoding = 8 #[-], Number of bit per pixel
-    compression = 15 #[-], Compression factor
+    # NAVCAM
+    # [deg], Horizontal FOV of the NAVCAM
+    FOV_x = navcam_config.get("FOV_x")
+    # [deg], Vertical FOV of the NAVCAM
+    FOV_y = navcam_config.get("FOX_y")
 
-    #RENDERING ENGINE
-    bpy.context.scene.render.engine = 'CYCLES'
-    bpy.context.scene.cycles.device = 'GPU' # 'CPU' or 'GPU'
-    bpy.context.scene.cycles.samples = 64 # number of samples
-    bpy.context.scene.cycles.diffuse_bounces = 0 #To avoid diffused light from D1 to D2. (4) default
-    bpy.context.scene.cycles.tile_size = 64  # tile size(x)
-    #bpy.context.scene.cycles.tile_y = 64  # tile size(y)
+    # [pxl], Horizontal resolution of the images
+    sensor_size_x = navcam_config.get("sensor_size_x")
 
-    #OTHERS
+    # [pxl], Vertical resolution of the images
+    sensor_size_y = navcam_config.get("sensor_size_y")
 
-    model_name_1 = 'Didymos'
-    model_name_2 = 'Dimorphos'
-    sun_energy = 2 #Energy value of the sun-light in Blender
-    specular_factor = 0 #Specularity value for the sun-light in Blender
-    address = "127.0.0.1"
-    port_M2B = 51001 #  Port from Matlab to Blender
-    port_B2M = 30001 #  Port from Blender to Matlab
-    DUMMY_OUTPUT = False
+    # [-], Number of channels of the images
+    n_channels = navcam_config.get("n_channels")
+
+    # [-], Number of bit per pixel
+    bit_encoding = navcam_config.get("bit_encoding")
+
+    # [-], Compression factor
+    compression = navcam_config.get("compression")
+
+    # RENDERING ENGINE
+    bpy.context.scene.render.engine = rendering_engine_config.get(
+        "render_engine")  # 'CYCLES' or 'BLENDER_EEVEE'
+    bpy.context.scene.cycles.device = rendering_engine_config.get(
+        "device")  # 'CPU' or 'GPU'
+    bpy.context.scene.cycles.samples = rendering_engine_config.get(
+        "samples")  # Number of samples for the rendering
+
+    # To avoid diffused light from D1 to D2. (4) default
+    bpy.context.scene.cycles.diffuse_bounces = rendering_engine_config.get(
+        "diffuse_bounces")
+
+    # Set tile size (NOTE: option name is as below in newer Blender versions)
+    bpy.context.scene.cycles.tile_size = rendering_engine_config.get(
+        "tile_size")
+
+    # BLENDER MODEL
+    # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
+    num_bodies = blender_model_config.get("num_bodies")
+
+    # Name of the bodies in the Blender scene
+    model_name_1 = blender_model_config.get("bodies_names")[0]
+    if num_bodies > 1:
+        model_name_2 = blender_model_config.get("bodies_names")[1]
+
+    # Energy value of the sun-light in Blender
+    sun_energy = blender_model_config.get("sun_energy")
+
+    # Specular factor of the sun-light in Blender
+    specular_factor = blender_model_config.get("specular_factor")
+
+    # SERVER
+    output_path = server_config.get("output_path")  # Output path for the images
+    address = server_config.get("address")  # Address of the server
+    port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
+    port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
+    DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
 
     #### (2) SCENE SET UP ####
     CAM = bpy.data.objects["Camera"]
     SUN = bpy.data.objects["Sun"]
     BODY_1 = bpy.data.objects[model_name_1]
-    BODY_2 = bpy.data.objects[model_name_2]
+    if num_bodies > 1:
+        BODY_2 = bpy.data.objects[model_name_2]
 
     # Camera parameters
     CAM.data.type = 'PERSP'
@@ -89,12 +153,14 @@ try:
     SUN.location = [0, 0, 0]
 
     BODY_1.rotation_mode = 'QUATERNION'
-    BODY_2.rotation_mode = 'QUATERNION'
+    if num_bodies > 1:
+        BODY_2.rotation_mode = 'QUATERNION'
     CAM.rotation_mode = 'QUATERNION'
     SUN.rotation_mode = 'QUATERNION'
 
     BODY_1.rotation_quaternion = [1, 0, 0, 0]
-    BODY_2.rotation_quaternion = [1, 0, 0, 0]
+    if num_bodies > 1:
+        BODY_2.rotation_quaternion = [1, 0, 0, 0]
     CAM.rotation_quaternion = [1, 0, 0, 0]
     SUN.rotation_quaternion = [1, 0, 0, 0]
 
@@ -106,15 +172,21 @@ try:
         return
 
     def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
+        # TODO function to rework, generalize and make more readable
 
         SUN.location = [0,0,0] # Because in Blender it is indifferent where the sun is located
         CAM.location = [PQ_SC[0], PQ_SC[1], PQ_SC[2]]
         BODY_1.location = [PQ_Bodies[0,0],PQ_Bodies[0,1],PQ_Bodies[0,2]]
-        BODY_2.location = [PQ_Bodies[1,0],PQ_Bodies[1,1],PQ_Bodies[1,2]]
+
+        if num_bodies > 1:
+            BODY_2.location = [PQ_Bodies[1,0],PQ_Bodies[1,1],PQ_Bodies[1,2]]
+
         SUN.rotation_quaternion = [PQ_Sun[3], PQ_Sun[4], PQ_Sun[5], PQ_Sun[6]]
         CAM.rotation_quaternion = [PQ_SC[3], PQ_SC[4], PQ_SC[5], PQ_SC[6]]
         BODY_1.rotation_quaternion = [PQ_Bodies[0,3], PQ_Bodies[0,4], PQ_Bodies[0,5], PQ_Bodies[0,6]]
-        BODY_2.rotation_quaternion = [PQ_Bodies[1,3], PQ_Bodies[1,4], PQ_Bodies[1,5], PQ_Bodies[1,6]]
+
+        if num_bodies > 1:
+            BODY_2.rotation_quaternion = [PQ_Bodies[1,3], PQ_Bodies[1,4], PQ_Bodies[1,5], PQ_Bodies[1,6]]
 
         return
 
@@ -148,8 +220,8 @@ try:
     #### (6) RECEIVE DATA AND RENDERING ####
     receiving_flag = 1
     ii = 0
-    #(clientsocket_recv, address_recv) = r.accept()
 
+    # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
 
         print("Waiting for data...\n")
@@ -162,7 +234,7 @@ try:
             print(f"Received {len(data_buffer)} bytes from {address_recv}\n")
             print(f"Received number of doubles: {numOfValues} values\n")
 
-            if not (numOfValues == 28): 
+            if not (numOfValues == 14 + 7 * num_bodies): 
                 raise RuntimeError("ACHTUNG: array size is not as expected!")
             
         except RuntimeError as e:
@@ -179,8 +251,17 @@ try:
         print(f"Array shape: {numpy_data_array.shape}\n")
 
         # Number of bodies apart from CAM and SUN
-        n_bodies = 2 # DEVNOTE hardcoded because the computation present before is not working properly?
-        print(f"Number of bodies: {n_bodies}\n")
+        # Number of bodies apart from CAM and SUN
+        n_bodies = (numOfValues - 14)/7  # Must be integer!
+
+        if n_bodies % 1 != 0:
+            raise ValueError("ACHTUNG: Number of bodies computed from buffer size is not an integer!")
+        else:
+            n_bodies = int(n_bodies)
+
+        if n_bodies != num_bodies:
+            raise ValueError(
+                "ACHTUNG: Number of bodies is not equal to the value set in config file! Found: {n_bodies}, Expected: {num_bodies}")
 
         # Extract the PQ vectors from data received from cuborg
         PQ_Sun = numpy_data_array[0:7]
@@ -198,7 +279,7 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
 
-        if not DUMMY_OUTPUT:
+        if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
             Render(ii) # Render function call, uses data set by PositionAll
             # Read the pixels from the saved image
             img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
@@ -206,6 +287,7 @@ try:
             # Get the type of the first pixel value
             pixel_dtype = type(img_read.pixels[0])
             print(f"Image datatype: {pixel_dtype}\n")
+            
             # Convert to a NumPy array using the same type
             img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the RGBA image to a vector
             print(f"Image datatype interpreted by numpy: {type(img_reshaped_vec)}\n")

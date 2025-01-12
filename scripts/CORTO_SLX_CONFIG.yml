@@ -1,0 +1,33 @@
+# Description: 
+# Configuration file for the CORTO SLX interface used in milani-gnc and RCS-1 projects. 
+# This file is used to set the parameters of the NAVCAM, the rendering engine and the server.
+# Author: Peter C.
+
+NavCam_params:
+  FOV_x: 21  # [deg], Horizontal FOV of the NAVCAM
+  FOV_y: 16  # [deg], Vertical FOV of the NAVCAM
+  sensor_size_x: 2048  # [pxl], Horizontal resolution of the images
+  sensor_size_y: 1536  # [pxl], Vertical resolution of the images
+  n_channels: 3  # [-], Number of channels of the images
+  bit_encoding: 8  # [-], Number of bits per pixel
+  compression: 15  # [-], Compression factor
+
+RenderingEngine_params:
+  render_engine: 'CYCLES'
+  device: 'GPU'  # 'CPU' or 'GPU'
+  samples: 64  # Number of samples
+  diffuse_bounces: 0  # To avoid diffused light from D1 to D2. (4 default)
+  tile_size: 64  # Tile size for rendering
+
+BlenderModel_params:
+  num_bodies: 2  # Number of bodies in the model  
+  bodies_names: ['Didymos', 'Dimorphos'] # Names of the bodies in the Blender file 
+  sun_energy: 2  # Energy value of the sun-light in Blender
+  specular_factor: 0  # Specularity value for the sun-light in Blender
+
+Server_params:
+  output_path: '/home/peterc/devDir/projects-DART/milani-gnc/artifacts/.tmpMilaniBlender'
+  address: "127.0.0.1"
+  port_M2B: 51001  # Port from Matlab to Blender
+  port_B2M: 30001  # Port from Blender to Matlab
+  DUMMY_OUTPUT: false
