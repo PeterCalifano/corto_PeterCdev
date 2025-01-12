@@ -1,6 +1,6 @@
 """
     Summary:
-    This script sets up a UDP/TCP server to receive data for rendering scenes in Blender. It reads configuration parameters from a YAML file, initializes Blender scene objects, and processes incoming data to update the scene and render images. 
+    This script sets up a UDP/TCP server to receive data for rendering scenes in Blender. It reads configuration parameters from a YAML file, initializes Blender scene objects, and processes incoming data to update the scene and render images. The Blender file it will use is provided by user when calling Blender with this script. Make sure to match the number of bodies. Tested with python >=3.10 and Blender >=4.0.0.
     Extended Summary:
     The order of the data in the buffer must be as follows:
     - PQ vector of the Sun (7 doubles)
@@ -109,6 +109,10 @@ try:
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
 
+    # Check if output_path exists, if not create it
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+        
     #### (2) SCENE SET UP ####
     CAM = bpy.data.objects["Camera"]
     SUN = bpy.data.objects["Sun"]
