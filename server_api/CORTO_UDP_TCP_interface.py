@@ -264,16 +264,26 @@ try:
     print('Client connected from', address,' as receiver\n')
 
     #### (6) RECEIVE DATA AND RENDERING ####
-    receiving_flag = 1
+    receiving_flag = True
+    disconnect_flag = False
     ii = 0
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
+        
+        # Wait for new connection
+        if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
+            print("Waiting for new connection...\n")
+            s.listen()
+            (clientsocket_send, address) = s.accept()
 
         print("Waiting for data...\n")
         try:
             # data, address_recv = r.recvfrom(512)
             data_buffer, address_recv = r.recvfrom(512)  
+
+            # Check if TCP socket is still alive
+            # TODO (PC) disconnection of TCP client before send not handled yet! 
 
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
@@ -331,21 +341,31 @@ try:
             img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
 
             # Get the type of the first pixel value
-            pixel_dtype = type(img_read.pixels[0])
+            pixel_dtype = type(img_read.pixels[0]) # FIXME (PC) ERROR IN DTYPE!
             print(f"Image datatype: {pixel_dtype}\n")
             
             # Convert to a NumPy array using the same type
             img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the RGBA image to a vector
-            print(f"Image datatype interpreted by numpy: {type(img_reshaped_vec)}\n")
+            print(f"Image datatype interpreted by numpy: {img_reshaped_vec.dtype}\n")
 
         else:
             img_reshaped_vec = np.float64(np.random.rand(4*sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
 
         # Pack the RGBA image as vector and transmit over TCP using numpy
-        img_pack = img_reshaped_vec.tobytes()
+        img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endiannes here? # TODO add specification in config file! 
 
-        print("Sending image vector to client...\n")
-        clientsocket_send.send(img_pack)
+        print(f"Sending image buffer of size {len(img_pack)} to client...\n")
+        try:
+            clientsocket_send.send(img_pack)
+        except (socket.error, BrokenPipeError) as e:
+            print(f"Error sending image data to client: {e}. Closing connection to client...\n")
+            receiving_flag = True  # Stop the server loop
+            disconnect_flag = True  # Close the connection to the client
+
+            # Disconnect the client
+            clientsocket_send.close()
+
+            continue
         print("Image sent correctly\n")
         
         print('------------------ Summary of operations for monitoring ------------------')
@@ -364,8 +384,8 @@ except KeyboardInterrupt:
     r.close()
     s.close()
     sys.exit(0)
-except RuntimeError as e:
-    print(f"Exception: {e}\n")
+except (socket.error, RuntimeError, OSError) as e:
+    print(f"Unrecoverable exception occurred: {e}\n")
     r.close()
     s.close()
     sys.exit(1)
