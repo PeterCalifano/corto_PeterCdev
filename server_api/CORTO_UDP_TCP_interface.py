@@ -23,12 +23,13 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
+from genericpath import exists
 import socket
+from time import sleep
 import numpy as np
 import bpy
 import sys, os
 import numpy as np
-
 # Check if yaml is installed and attempt automatic installation if not
 try:
     import yaml 
@@ -75,6 +76,34 @@ except ImportError:
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
 CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yml")
+
+
+
+def is_socket_closed(sock: socket.socket) -> bool:
+    """
+    is_socket_closed _summary_
+
+    _extended_summary_
+
+    :param sock: _description_
+    :type sock: socket.socket
+    :return: _description_
+    :rtype: bool
+    """
+    try:
+        # This will try to read bytes without blocking and also without removing them from buffer (peek only)
+        data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        if len(data) == 0:
+            return True
+    except BlockingIOError:
+        return False  # socket is open and reading from it would block
+    except ConnectionResetError:
+        return True  # socket was closed for some other reason
+    except Exception as e:
+        print(f"Error occurred while checking client socket status: {e}")
+        return False
+    return False
+
 
 # Load the YAML configuration
 with open(CORTO_SLX_CONFIG_PATH, "r") as file:
@@ -245,6 +274,7 @@ try:
 
     try:
         r.bind((address, port_M2B))
+        r.setblocking(False)  # Non-blocking for receiving data
         print(f"Socket successfully bound to {address}:{port_M2B}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
@@ -256,9 +286,10 @@ try:
         print(f"Failed to bind socket: {e}")
 
     print(f"Binding successful. Starting listening to connection on port", port_M2B, "\n")
-    print(f"Data will be sent through port:", port_B2M, "\n")
+    print(f"Data will be sent through port:", port_B2M)
 
     # r.listen()  # Not needed for UDP
+    print(f'Waiting for data from client receiver on port {port_M2B}...')
     s.listen() 
     (clientsocket_send, address) = s.accept()
     print('Client connected from', address,' as receiver\n')
@@ -266,25 +297,52 @@ try:
     #### (6) RECEIVE DATA AND RENDERING ####
     receiving_flag = True
     disconnect_flag = False
+    bytes_recv_udp = 0
+    no_client_counter = 0
+    max_no_client_counter = 0.5*60*10 # approx. 10 minutes of no client before closing the server
     ii = 0
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
-        
-        # Wait for new connection
-        if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
-            print("Waiting for new connection...\n")
-            s.listen()
-            (clientsocket_send, address) = s.accept()
-
-        print("Waiting for data...\n")
+        if no_client_counter >= max_no_client_counter:
+            raise RuntimeError("Maximum number of iterations without client connected. Closing the server...")
         try:
-            # data, address_recv = r.recvfrom(512)
-            data_buffer, address_recv = r.recvfrom(512)  
+            while bytes_recv_udp == 0:
+                # Wait for new connection
+                if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
+                    print("Waiting for new connection...\n")
+                    clientsocket_send.close()
+                    s.listen()
+                    (clientsocket_send, address) = s.accept()
+                    print('Client connected from', address,' as receiver\n')
+                    disconnect_flag = False
+                    max_no_client_counter = 0 # Reset the counter
 
-            # Check if TCP socket is still alive
-            # TODO (PC) disconnection of TCP client before send not handled yet! 
+                print("Waiting for data...\n")
+                try:
+                    data_buffer, address_recv = r.recvfrom(512)  
+                    bytes_recv_udp = len(data_buffer)
+                    if bytes_recv_udp == 0:
+                        raise BlockingIOError("ACHTUNG: No data received from client!")
+                    
+                except BlockingIOError:
+                    print("BlockingIOError: No data received yet. Waiting...\n")
+                    # Socket is open and reading from it would block, do nothing
+                    bytes_recv_udp = 0
+                    data_buffer = None
+                    continue  
 
+                #if exists(data_buffer):
+                #    bytes_recv_udp = len(data_buffer)
+                #else:
+                #    bytes_recv_udp = 0
+
+                sleep(1) 
+                max_no_client_counter += 1
+
+            if data_buffer is None:
+                raise RuntimeError("ACHTUNG: No data received from client!")
+            
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
             print(f"Received {len(data_buffer)} bytes from {address_recv}\n")
@@ -293,10 +351,37 @@ try:
             if not (numOfValues == 14 + 7 * num_bodies): 
                 raise RuntimeError("ACHTUNG: array size is not as expected!")
             
+            # Check if TCP socket is still alive
+            print('Checking if client is still connected...')
+            
+            #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
+
+        except (ConnectionResetError, socket.error):
+            print("ConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
+            print("Server will continue operation waiting for a reconnection...")
+            disconnect_flag = True  # Make the server wait for a reconnection
+            bytes_recv_udp = 0
+            s.close()
+            continue 
         except RuntimeError as e:
             print(f"RuntimeError: {e}\n")
-            print("Server will continue listening for new data...")
+            print("Server will continue operation waiting for a reconnection...")
+            disconnect_flag = True  # Make the server wait for a reconnection
+            bytes_recv_udp = 0
+            clientsocket_send.close()
             continue
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt: Closing the server...\n")
+            r.close()
+            clientsocket_send.close()
+            s.close()
+            sys.exit(0)
+        except (RuntimeError, OSError) as e:
+            print(f"Unrecoverable exception occurred: {e}\n")
+            r.close()
+            clientsocket_send.close()
+            s.close()
+            sys.exit(1)
 
         # Casting to numpy array
         dtype = np.dtype(np.float64)  # Big-endian float64
@@ -335,35 +420,42 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
 
-        if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
-            Render(ii) # Render function call, uses data set by PositionAll
-            # Read the pixels from the saved image
-            img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
-
-            # Get the type of the first pixel value
-            pixel_dtype = type(img_read.pixels[0]) # FIXME (PC) ERROR IN DTYPE!
-            print(f"Image datatype: {pixel_dtype}\n")
-            
-            # Convert to a NumPy array using the same type
-            img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the RGBA image to a vector
-            print(f"Image datatype interpreted by numpy: {img_reshaped_vec.dtype}\n")
-
-        else:
-            img_reshaped_vec = np.float64(np.random.rand(4*sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
-
-        # Pack the RGBA image as vector and transmit over TCP using numpy
-        img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endiannes here? # TODO add specification in config file! 
-
-        print(f"Sending image buffer of size {len(img_pack)} to client...\n")
         try:
+
+            if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
+                Render(ii) # Render function call, uses data set by PositionAll
+                # Read the pixels from the saved image
+                img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
+
+                # Get the type of the first pixel value
+                pixel_dtype = type(img_read.pixels[0]) # FIXME (PC) ERROR IN DTYPE!
+                print(f"Image datatype: {pixel_dtype}\n")
+                
+                # Convert to a NumPy array using the same type
+                img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the RGBA image to a vector
+                print(f"Image datatype interpreted by numpy: {img_reshaped_vec.dtype}\n")
+
+            else:
+                img_reshaped_vec = np.float64(np.random.rand(4*sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
+
+            # Pack the RGBA image as vector and transmit over TCP using numpy
+            img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endiannes here? # TODO add specification in config file! 
+
+            print(f"Sending image buffer of size {len(img_pack)} to client...\n")
             clientsocket_send.send(img_pack)
-        except (socket.error, BrokenPipeError) as e:
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt: Closing the server...\n")
+            r.close()
+            s.close()
+            sys.exit(0)
+        except (socket.error, BrokenPipeError, ConnectionResetError, OSError) as e:
             print(f"Error sending image data to client: {e}. Closing connection to client...\n")
             receiving_flag = True  # Stop the server loop
             disconnect_flag = True  # Close the connection to the client
 
             # Disconnect the client
             clientsocket_send.close()
+            bytes_recv_udp = 0
 
             continue
         print("Image sent correctly\n")
