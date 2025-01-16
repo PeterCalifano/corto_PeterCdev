@@ -27,7 +27,7 @@ BlenderModel_params:
   specular_factor: 0  # Specularity value for the sun-light in Blender
 
 Server_params:
-  output_path: '/home/peterc/devDir/projects-DART/milani-gnc/artifacts/.tmpMilaniBlender' # Where Blender will save images
+  output_path: '/home/peterc/devDir/projects-DART/rcs-1-gnc-simulator/artifacts/.tmprcs1' # Where Blender will save images
   address: "127.0.0.1"
   port_M2B: 51001  # Port from Matlab to Blender
   port_B2M: 30001  # Port from Blender to Matlab

@@ -257,7 +257,7 @@ try:
     SUN.rotation_quaternion = [1, 0, 0, 0]
     print('OK')
 
-    print('Defining rendering functions...')
+    print('Defining rendering functions...', end='')
     #### (4) FUNCTION DEFINITIONS ####
     def Render(ii):
         name = '{:06d}.png'.format(int(ii))
