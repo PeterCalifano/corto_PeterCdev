@@ -332,7 +332,7 @@ try:
     receiving_flag = True
     disconnect_flag = False
     bytes_recv_udp = 0
-    img_pack_sent = None
+    numpy_data_array_prev = None
     max_timeout_counter = 0.5*120*10 # approx. 60 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
@@ -344,7 +344,7 @@ try:
                 # Wait for new connection
                 if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
                     # Reset flags and arrays
-                    img_pack_sent = None
+                    numpy_data_array_prev = None
                     data_buffer = None
                     ii = 0
 
@@ -470,6 +470,14 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
 
+        # Check data freshness
+        if numpy_data_array_prev is not None:
+            if numpy_data_array_prev == numpy_data_array:
+                raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
+
+        # Copy sent bytes for error checking # FIXME, not sure this is working as intended
+        numpy_data_array_prev = copy.deepcopy(numpy_data_array)
+        
         try:
             if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
                 Render(ii) # Render function call, uses data set by PositionAll
@@ -494,15 +502,9 @@ try:
 
             print(f"Sending image buffer of size {len(img_pack)} to client...\n")
 
-            # Check data freshness
-            if img_pack_sent is not None:
-                if img_pack_sent == img_pack:
-                    raise RuntimeError("ACHTUNG: Server attempted to send old image pack!")
-                
             clientsocket_send.send(img_pack)
             
-            # Copy sent bytes for error checking
-            img_pack_sent = copy.deepcopy(img_pack)
+
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Closing the server...\n")
