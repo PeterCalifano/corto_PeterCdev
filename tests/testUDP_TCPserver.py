@@ -44,7 +44,7 @@ try:
 
     # Step 3: Unpack response data
     received_values = struct.unpack(
-        '>' + 'd' * (len(response_data) // 8), response_data)
+        '<' + 'd' * (len(response_data) // 8), response_data)
     print("Received values from server:", received_values)
 
     # Step 4: Validate response
