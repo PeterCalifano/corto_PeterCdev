@@ -297,22 +297,22 @@ try:
     #### (5) ESTABLISH UDP/TCP CONNECTION ####
     print("Starting the UDP/TCP server...\n")
 
-    r = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    UDPrecvSocket = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
+    TCPsendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Set TCP server socket
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.settimeout(120)
+    TCPsendSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    TCPsendSocket.settimeout(120)
 
     try:
-        r.bind((address, port_M2B))
-        r.setblocking(False)  # Non-blocking for receiving data
+        UDPrecvSocket.bind((address, port_M2B))
+        UDPrecvSocket.setblocking(False)  # Non-blocking for receiving data
         print(f"Socket successfully bound to {address}:{port_M2B}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
         sys.exit(1)
 
     try:
-        s.bind((address, port_B2M))
+        TCPsendSocket.bind((address, port_B2M))
         print(f"Socket successfully bound to {address}:{port_B2M}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
@@ -324,25 +324,21 @@ try:
 
     # r.listen()  # Not needed for UDP
     print(f'Waiting for data from client receiver on port {port_M2B}...')
-    s.listen() 
-    (clientsocket_send, address) = s.accept()
+    TCPsendSocket.listen() 
+    (clientsocket_send, address) = TCPsendSocket.accept()
     print('Client connected from', address,' as receiver\n')
 
     #### (6) RECEIVE DATA AND RENDERING ####
     receiving_flag = True
     disconnect_flag = False
     bytes_recv_udp = 0
-    no_client_counter = 0
     img_pack_sent = None
-    max_no_client_counter = 1*5*10 # approx. 10 minutes of no client before closing the server
-    max_timeout_counter = 0.5*5*10 # approx. 60 seconds of no data before closing the server
+    max_timeout_counter = 0.5*120*10 # approx. 60 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
-        if no_client_counter >= max_no_client_counter:
-            raise RuntimeError("Maximum number of iterations without client connected. Closing the server...")
         try:
             while bytes_recv_udp == 0:
                 # Wait for new connection
@@ -352,8 +348,8 @@ try:
                     data_buffer = None
                     ii = 0
 
-                    s.listen()
-                    (clientsocket_send, address) = s.accept()
+                    TCPsendSocket.listen()
+                    (clientsocket_send, address) = TCPsendSocket.accept()
 
                     print('Client connected from', address,' as receiver\n')
                     disconnect_flag = False
@@ -366,17 +362,17 @@ try:
                         raise ConnectionResetError( "ACHTUNG: No data received from client for too long, disconnecting...")
                     
                     print("Attempting to get data from client...\n")  
-                    data_buffer, address_recv = r.recvfrom(512)  
+                    data_buffer, address_recv = UDPrecvSocket.recvfrom(512)  
                     bytes_recv_udp = len(data_buffer)
 
                     #data_checksum = sum(data_buffer)
 
                     if bytes_recv_udp == 0 or data_buffer is None:
-                        raise BlockingIOError("ACHTUNG: No data received from client!")
+                        raise BlockingIOError("ACHTUNG: No data received from client, but !")
 
 
                 except BlockingIOError:
-                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...\n")
+                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...")
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
                     data_buffer = None
@@ -388,9 +384,6 @@ try:
                 #    bytes_recv_udp = len(data_buffer)
                 #else:
                 #    bytes_recv_udp = 0
-                sleep(1)
-                no_client_counter += 1
-                print(f"No client connected since {no_client_counter} seconds... Waiting for max {max_no_client_counter} [s]\n")
 
             #if data_buffer is None:
             #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
@@ -414,7 +407,8 @@ try:
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
             
-            print("Waiting for new connection...\n")
+            print(f" Waiting for new connection from client receiver on port {port_M2B}...")
+           
             clientsocket_send.close()
             continue 
 
@@ -429,9 +423,9 @@ try:
 
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt: Closing the server...\n")
-            r.close()
+            UDPrecvSocket.close()
             clientsocket_send.close()
-            s.close()
+            TCPsendSocket.close()
             sys.exit(0)
 
 
@@ -512,8 +506,8 @@ try:
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Closing the server...\n")
-            r.close()
-            s.close()
+            UDPrecvSocket.close()
+            TCPsendSocket.close()
             sys.exit(0)
 
         except (socket.error, BrokenPipeError, ConnectionResetError, OSError) as e:
@@ -544,12 +538,12 @@ try:
 
 except KeyboardInterrupt:
     print("KeyboardInterrupt: Closing the server...\n")
-    r.close()
-    s.close()
+    UDPrecvSocket.close()
+    TCPsendSocket.close()
     sys.exit(0)
 except (socket.error, RuntimeError, OSError) as e:
     print(f"Unrecoverable exception occurred: {e}\n")
-    r.close()
-    s.close()
+    UDPrecvSocket.close()
+    TCPsendSocket.close()
     sys.exit(1)
 
