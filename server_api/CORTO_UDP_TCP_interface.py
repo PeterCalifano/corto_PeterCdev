@@ -78,7 +78,6 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yml")
 
 
-
 def is_socket_closed(sock: socket.socket) -> bool:
     """
     is_socket_closed _summary_
@@ -121,6 +120,7 @@ with open(CORTO_SLX_CONFIG_PATH, "r") as file:
 
 #### (1) PARAMETERS ####
 try:
+    print('Assigning parameters from the configuration file...\n')
     # NAVCAM
     # [deg], Horizontal FOV of the NAVCAM
     FOV_x = navcam_config.get("FOV_x")
@@ -180,34 +180,48 @@ try:
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
 
+    print('Parameters loaded successfully!\n')
     # Check if output_path exists, if not create it
     if not os.path.exists(output_path):
+        print('Output path does not exist. Creating it...')
         os.makedirs(output_path)
+    print('Output path set up correctly.')
 
+    print('Setting up Blender file...\n')
     #### (2) SCENE SET UP ####
+    print('Getting Blender objects...', end='')
     CAM = bpy.data.objects["Camera"]
     SUN = bpy.data.objects["Sun"]
     BODY_1 = bpy.data.objects[model_name_1]
     if num_bodies > 1:
         BODY_2 = bpy.data.objects[model_name_2]
+    print('OK')
 
     # Camera parameters
+    print('Setting up Camera objects properties...', end='')
     CAM.data.type = 'PERSP'
     CAM.data.lens_unit = 'FOV'
     CAM.data.angle = FOV_x * np.pi / 180
     CAM.data.clip_start = 0.5 # [m] in Blender, but scaled in km
     CAM.data.clip_end = 100 # [m] in Blender, but scaled in km
+    print('OK')
+
+    print('Setting up scene.render properties...', end='')
     bpy.context.scene.render.pixel_aspect_x = 1
     bpy.context.scene.render.pixel_aspect_y = 1
     bpy.context.scene.render.resolution_x = sensor_size_x # CAM resolution (x)
     bpy.context.scene.render.resolution_y = sensor_size_y # CAM resolution (y)
+    print('OK')
 
-    # Light parameters
+    # Light parameters    
+    print('Setting up light properties...', end='')
     SUN.data.type = 'SUN'
     SUN.data.energy = sun_energy  # To perform quantitative analysis
     SUN.data.specular_factor = specular_factor
+    print('OK')
 
     # Environment parameters
+    print('Setting up Blender environment parameters...', end='')
     bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0, 0, 0, 1)
 
     if n_channels == 1:
@@ -219,11 +233,14 @@ try:
 
     bpy.context.scene.render.image_settings.color_depth = str(bit_encoding)
     bpy.context.scene.render.image_settings.compression = compression
+    print('OK')
 
     #### (3) DYNAMIC PARAMETERS ####
+    print('Initializing objects scene properties...', end='')
     #Initialization of Bodies, Cam and Sun
     BODY_1.location = [0, 0, 0]
-    BODY_2.location = [0, 0, 0]
+    if num_bodies > 1:
+        BODY_2.location = [0, 0, 0]
     CAM.location = [10, 0, 0]
     SUN.location = [0, 0, 0]
 
@@ -238,7 +255,9 @@ try:
         BODY_2.rotation_quaternion = [1, 0, 0, 0]
     CAM.rotation_quaternion = [1, 0, 0, 0]
     SUN.rotation_quaternion = [1, 0, 0, 0]
+    print('OK')
 
+    print('Defining rendering functions...', end='')
     #### (4) FUNCTION DEFINITIONS ####
     def Render(ii):
         name = '{:06d}.png'.format(int(ii))
@@ -264,6 +283,7 @@ try:
             BODY_2.rotation_quaternion = [PQ_Bodies[1,3], PQ_Bodies[1,4], PQ_Bodies[1,5], PQ_Bodies[1,6]]
 
         return
+    print('OK')
 
     #### (5) ESTABLISH UDP/TCP CONNECTION ####
     print("Starting the UDP/TCP server...\n")
