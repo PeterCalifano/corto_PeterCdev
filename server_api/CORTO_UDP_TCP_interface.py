@@ -29,6 +29,7 @@ from time import sleep
 import numpy as np
 import bpy
 import sys, os
+import copy
 import numpy as np
 # Check if yaml is installed and attempt automatic installation if not
 try:
@@ -167,6 +168,9 @@ try:
     if num_bodies > 1:
         model_name_2 = blender_model_config.get("bodies_names")[1]
 
+    # Light object name
+    light_names = blender_model_config.get("light_names")
+
     # Energy value of the sun-light in Blender
     sun_energy = blender_model_config.get("sun_energy")
 
@@ -191,7 +195,12 @@ try:
     #### (2) SCENE SET UP ####
     print('Getting Blender objects...', end='')
     CAM = bpy.data.objects["Camera"]
-    SUN = bpy.data.objects["Sun"]
+
+    # Get name of light object
+    if len(light_names) > 1:
+        raise NotImplementedError("ACHTUNG: More than one light object is not supported yet!")
+
+    SUN = bpy.data.objects[light_names[0]]
     BODY_1 = bpy.data.objects[model_name_1]
     if num_bodies > 1:
         BODY_2 = bpy.data.objects[model_name_2]
@@ -290,7 +299,9 @@ try:
 
     r = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Set TCP server socket
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.settimeout(120)
 
     try:
         r.bind((address, port_M2B))
@@ -298,12 +309,15 @@ try:
         print(f"Socket successfully bound to {address}:{port_M2B}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
+        sys.exit(1)
 
     try:
         s.bind((address, port_B2M))
         print(f"Socket successfully bound to {address}:{port_B2M}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
+        sys.exit(1)
+
 
     print(f"Binding successful. Starting listening to connection on port", port_M2B, "\n")
     print(f"Data will be sent through port:", port_B2M)
@@ -319,7 +333,10 @@ try:
     disconnect_flag = False
     bytes_recv_udp = 0
     no_client_counter = 0
-    max_no_client_counter = 0.5*60*10 # approx. 10 minutes of no client before closing the server
+    img_pack_sent = None
+    max_no_client_counter = 1*5*10 # approx. 10 minutes of no client before closing the server
+    max_timeout_counter = 0.5*5*10 # approx. 60 seconds of no data before closing the server
+    timeout_counter = 0
     ii = 0
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
@@ -330,46 +347,61 @@ try:
             while bytes_recv_udp == 0:
                 # Wait for new connection
                 if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
-                    print("Waiting for new connection...\n")
-                    clientsocket_send.close()
+                    # Reset flags and arrays
+                    img_pack_sent = None
+                    data_buffer = None
+                    ii = 0
+
                     s.listen()
                     (clientsocket_send, address) = s.accept()
+
                     print('Client connected from', address,' as receiver\n')
                     disconnect_flag = False
-                    max_no_client_counter = 0 # Reset the counter
+                    no_client_counter = 0  # Reset the counter
 
-                print("Waiting for data...\n")
                 try:
+                    # Check if timeout counter is reached
+                    if timeout_counter > max_timeout_counter:
+                        clientsocket_send.close()
+                        raise ConnectionResetError( "ACHTUNG: No data received from client for too long, disconnecting...")
+                    
+                    print("Attempting to get data from client...\n")  
                     data_buffer, address_recv = r.recvfrom(512)  
                     bytes_recv_udp = len(data_buffer)
-                    if bytes_recv_udp == 0:
+
+                    #data_checksum = sum(data_buffer)
+
+                    if bytes_recv_udp == 0 or data_buffer is None:
                         raise BlockingIOError("ACHTUNG: No data received from client!")
-                    
+
+
                 except BlockingIOError:
-                    print("BlockingIOError: No data received yet. Waiting...\n")
+                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...\n")
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
                     data_buffer = None
+                    timeout_counter += 1
+                    sleep(0.5) 
                     continue  
 
                 #if exists(data_buffer):
                 #    bytes_recv_udp = len(data_buffer)
                 #else:
                 #    bytes_recv_udp = 0
+                sleep(1)
+                no_client_counter += 1
+                print(f"No client connected since {no_client_counter} seconds... Waiting for max {max_no_client_counter} [s]\n")
 
-                sleep(1) 
-                max_no_client_counter += 1
-
-            if data_buffer is None:
-                raise RuntimeError("ACHTUNG: No data received from client!")
+            #if data_buffer is None:
+            #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
             
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
-            print(f"Received {len(data_buffer)} bytes from {address_recv}\n")
-            print(f"Received number of doubles: {numOfValues} values\n")
+            print(f"Received {len(data_buffer)} bytes from {address_recv}")
+            print(f"Received number of doubles: {numOfValues} values")
 
             if not (numOfValues == 14 + 7 * num_bodies): 
-                raise RuntimeError("ACHTUNG: array size is not as expected!")
+                raise RuntimeError("ACHTUNG: incorrect message format. Expected 14 doubles for Camera and Sun + 7 doubles for each body! Found {}, expected: {}.".format((numOfValues - 14)//7, num_bodies))
             
             # Check if TCP socket is still alive
             print('Checking if client is still connected...')
@@ -377,35 +409,39 @@ try:
             #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
 
         except (ConnectionResetError, socket.error):
-            print("ConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
+            print("\nConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
-            s.close()
+            
+            print("Waiting for new connection...\n")
+            clientsocket_send.close()
             continue 
+
         except RuntimeError as e:
-            print(f"RuntimeError: {e}\n")
+            print(f"\nRuntimeError: {e}")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
+            print("Waiting for new connection...\n")
             clientsocket_send.close()
             continue
+
         except KeyboardInterrupt:
-            print("KeyboardInterrupt: Closing the server...\n")
+            print("\nKeyboardInterrupt: Closing the server...\n")
             r.close()
             clientsocket_send.close()
             s.close()
             sys.exit(0)
-        except (RuntimeError, OSError) as e:
-            print(f"Unrecoverable exception occurred: {e}\n")
-            r.close()
-            clientsocket_send.close()
-            s.close()
-            sys.exit(1)
+
 
         # Casting to numpy array
         dtype = np.dtype(np.float64)  # Big-endian float64
         numpy_data_array = np.frombuffer(data_buffer, dtype=dtype)
+
+        # Clear data_buffer after processing
+        data_buffer = None
+        bytes_recv_udp = 0
 
         #data = struct.unpack('>' + 'd' * numOfValues, data) # Unpack bytes in data to double big-endian
         print('Array received: ', numpy_data_array)
@@ -441,9 +477,10 @@ try:
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
 
         try:
-
             if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
                 Render(ii) # Render function call, uses data set by PositionAll
+                #data_freshness_flag = False # Set freshness data to false
+
                 # Read the pixels from the saved image
                 img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
 
@@ -462,12 +499,23 @@ try:
             img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endiannes here? # TODO add specification in config file! 
 
             print(f"Sending image buffer of size {len(img_pack)} to client...\n")
+
+            # Check data freshness
+            if img_pack_sent is not None:
+                if img_pack_sent == img_pack:
+                    raise RuntimeError("ACHTUNG: Server attempted to send old image pack!")
+                
             clientsocket_send.send(img_pack)
+            
+            # Copy sent bytes for error checking
+            img_pack_sent = copy.deepcopy(img_pack)
+
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Closing the server...\n")
             r.close()
             s.close()
             sys.exit(0)
+
         except (socket.error, BrokenPipeError, ConnectionResetError, OSError) as e:
             print(f"Error sending image data to client: {e}. Closing connection to client...\n")
             receiving_flag = True  # Stop the server loop
@@ -478,6 +526,7 @@ try:
             bytes_recv_udp = 0
 
             continue
+
         print("Image sent correctly\n")
         
         print('------------------ Summary of operations for monitoring ------------------')
@@ -491,6 +540,8 @@ try:
             
         #continue on the iteration
         ii = ii + 1
+
+
 except KeyboardInterrupt:
     print("KeyboardInterrupt: Closing the server...\n")
     r.close()
