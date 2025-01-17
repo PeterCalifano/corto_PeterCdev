@@ -167,6 +167,9 @@ try:
     if num_bodies > 1:
         model_name_2 = blender_model_config.get("bodies_names")[1]
 
+    # Light object name
+    light_names = blender_model_config.get("light_names")
+
     # Energy value of the sun-light in Blender
     sun_energy = blender_model_config.get("sun_energy")
 
@@ -191,7 +194,12 @@ try:
     #### (2) SCENE SET UP ####
     print('Getting Blender objects...', end='')
     CAM = bpy.data.objects["Camera"]
-    SUN = bpy.data.objects["Sun"]
+
+    # Get name of light object
+    if len(light_names) > 1:
+        raise NotImplementedError("ACHTUNG: More than one light object is not supported yet!")
+
+    SUN = bpy.data.objects[light_names[0]]
     BODY_1 = bpy.data.objects[model_name_1]
     if num_bodies > 1:
         BODY_2 = bpy.data.objects[model_name_2]

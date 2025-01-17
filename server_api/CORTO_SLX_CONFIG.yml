@@ -22,6 +22,7 @@ RenderingEngine_params:
 
 BlenderModel_params:
   num_bodies: 1  # Number of bodies in the model  
+  light_names: ['Light']  # Name of the sun-light in the Blender file
   bodies_names: ['Apophis'] # Names of the bodies in the Blender file 
   sun_energy: 2  # Energy value of the sun-light in Blender
   specular_factor: 0  # Specularity value for the sun-light in Blender
