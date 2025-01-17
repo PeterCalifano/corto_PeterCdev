@@ -371,12 +371,9 @@ try:
 
                     #data_checksum = sum(data_buffer)
 
-                    if bytes_recv_udp == 0:
+                    if bytes_recv_udp == 0 or data_buffer is None:
                         raise BlockingIOError("ACHTUNG: No data received from client!")
-                    
 
-                    #if data_buffer 
-                    #    data_freshness_flag = True
 
                 except BlockingIOError:
                     print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...\n")
@@ -395,16 +392,16 @@ try:
                 no_client_counter += 1
                 print(f"No client connected since {no_client_counter} seconds... Waiting for max {max_no_client_counter} [s]\n")
 
-            if data_buffer is None:
-                raise RuntimeError("ACHTUNG: No data received from client!")
+            #if data_buffer is None:
+            #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
             
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
-            print(f"Received {len(data_buffer)} bytes from {address_recv}\n")
-            print(f"Received number of doubles: {numOfValues} values\n")
+            print(f"Received {len(data_buffer)} bytes from {address_recv}")
+            print(f"Received number of doubles: {numOfValues} values")
 
             if not (numOfValues == 14 + 7 * num_bodies): 
-                raise RuntimeError("ACHTUNG: array size is not as expected!")
+                raise RuntimeError("ACHTUNG: incorrect message format. Expected 14 doubles for Camera and Sun + 7 doubles for each body! Found {}, expected: {}.".format((numOfValues - 14)//7, num_bodies))
             
             # Check if TCP socket is still alive
             print('Checking if client is still connected...')
@@ -412,7 +409,7 @@ try:
             #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
 
         except (ConnectionResetError, socket.error):
-            print("ConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
+            print("\nConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
@@ -422,15 +419,16 @@ try:
             continue 
 
         except RuntimeError as e:
-            print(f"RuntimeError: {e}\n")
+            print(f"\nRuntimeError: {e}")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
+            print("Waiting for new connection...\n")
             clientsocket_send.close()
             continue
 
         except KeyboardInterrupt:
-            print("KeyboardInterrupt: Closing the server...\n")
+            print("\nKeyboardInterrupt: Closing the server...\n")
             r.close()
             clientsocket_send.close()
             s.close()
@@ -440,6 +438,10 @@ try:
         # Casting to numpy array
         dtype = np.dtype(np.float64)  # Big-endian float64
         numpy_data_array = np.frombuffer(data_buffer, dtype=dtype)
+
+        # Clear data_buffer after processing
+        data_buffer = None
+        bytes_recv_udp = 0
 
         #data = struct.unpack('>' + 'd' * numOfValues, data) # Unpack bytes in data to double big-endian
         print('Array received: ', numpy_data_array)
