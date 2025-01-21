@@ -78,7 +78,6 @@ except ImportError:
 script_path = os.path.dirname(os.path.realpath(__file__))
 CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yml")
 
-
 def is_socket_closed(sock: socket.socket) -> bool:
     """
     is_socket_closed _summary_
@@ -92,7 +91,7 @@ def is_socket_closed(sock: socket.socket) -> bool:
     """
     try:
         # This will try to read bytes without blocking and also without removing them from buffer (peek only)
-        data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        data = sock.recv(1, socket.MSG_DONTWAIT | socket.MSG_PEEK)
         if len(data) == 0:
             return True
     except BlockingIOError:
