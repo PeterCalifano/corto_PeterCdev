@@ -25,6 +25,7 @@
 
 from genericpath import exists
 import socket
+from ssl import socket_error
 from time import sleep
 import numpy as np
 import bpy
@@ -183,6 +184,7 @@ try:
     port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
+    tcpTimeOutValue = 120 # [s]
 
     print('Parameters loaded successfully!\n')
     # Check if output_path exists, if not create it
@@ -301,7 +303,7 @@ try:
     TCPsendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Set TCP server socket
     TCPsendSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    TCPsendSocket.settimeout(120)
+    TCPsendSocket.settimeout(tcpTimeOutValue)
 
     try:
         UDPrecvSocket.bind((address, port_M2B))
@@ -333,7 +335,7 @@ try:
     disconnect_flag = False
     bytes_recv_udp = 0
     numpy_data_array_prev = None
-    max_timeout_counter = 0.5*120*10 # approx. 60 seconds of no data before closing the server
+    max_timeout_counter = 0.5*120*2 # approx. 120 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
 
@@ -348,7 +350,7 @@ try:
                     data_buffer = None
                     ii = 0
 
-                    TCPsendSocket.listen()
+                    print(f"Waiting for new connection from client receiver on port {port_M2B}. Timeout set equal to {tcpTimeOutValue}...")
                     (clientsocket_send, address) = TCPsendSocket.accept()
 
                     print('Client connected from', address,' as receiver\n')
@@ -401,14 +403,11 @@ try:
             
             #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
 
-        except (ConnectionResetError, socket.error):
-            print("\nConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
+        except (ConnectionResetError, BrokenPipeError):
+            print("\nConnectionResetError: no open connection or client disconnection.")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
-            
-            print(f" Waiting for new connection from client receiver on port {port_M2B}...")
-           
             clientsocket_send.close()
             continue 
 
@@ -417,7 +416,6 @@ try:
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
-            print("Waiting for new connection...\n")
             clientsocket_send.close()
             continue
 
@@ -427,6 +425,13 @@ try:
             clientsocket_send.close()
             TCPsendSocket.close()
             sys.exit(0)
+
+        except socket.error as socket_err:
+            print(f"Unrecoverable exception occurred: {socket_err}\n")
+            UDPrecvSocket.close()
+            clientsocket_send.close()
+            TCPsendSocket.close()
+            sys.exit(1) 
 
 
         # Casting to numpy array
@@ -472,7 +477,7 @@ try:
 
         # Check data freshness
         if numpy_data_array_prev is not None:
-            if numpy_data_array_prev == numpy_data_array:
+            if (numpy_data_array_prev == numpy_data_array).all():
                 raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
 
         # Copy sent bytes for error checking # FIXME, not sure this is working as intended
