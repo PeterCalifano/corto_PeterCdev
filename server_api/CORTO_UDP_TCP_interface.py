@@ -371,6 +371,8 @@ try:
 
                     if bytes_recv_udp == 0 or data_buffer is None:
                         raise BlockingIOError("ACHTUNG: No data received from client, but !")
+                    else:
+                        timeout_counter = 0  # Reset the timeout counter
 
 
                 except BlockingIOError:
