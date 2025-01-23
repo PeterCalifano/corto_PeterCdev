@@ -405,13 +405,21 @@ try:
             
             #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
 
-        except (ConnectionResetError, BrokenPipeError):
+        except (ConnectionResetError):
             print("\nConnectionResetError: no open connection or client disconnection.")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
             clientsocket_send.close()
             continue 
+
+        except (BrokenPipeError):
+            print("\nBrokenPipeError: no open connection or client disconnection.")
+            print("Server will continue operation waiting for a reconnection...")
+            disconnect_flag = True  # Make the server wait for a reconnection
+            bytes_recv_udp = 0
+            clientsocket_send.close()
+            continue
 
         except RuntimeError as e:
             print(f"\nRuntimeError: {e}")
