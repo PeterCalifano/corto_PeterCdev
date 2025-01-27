@@ -23,6 +23,8 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
+DEBUG_MODE = True
+
 from genericpath import exists
 import socket
 from ssl import socket_error
@@ -277,8 +279,10 @@ try:
         return
 
     def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
-        # TODO function to rework, generalize and make more readable
 
+        # TODO function to rework, generalize and make more readable
+        # Add also a check on the quaternions (must be unit quaternions)
+        
         SUN.location = [0,0,0] # Because in Blender it is indifferent where the sun is located
         CAM.location = [PQ_SC[0], PQ_SC[1], PQ_SC[2]]
         BODY_1.location = [PQ_Bodies[0,0],PQ_Bodies[0,1],PQ_Bodies[0,2]]
@@ -473,7 +477,7 @@ try:
         PQ_Sun = numpy_data_array[0:7]
         PQ_SC = numpy_data_array[7:14]
         PQ_Bodies = numpy_data_array[14:]
-        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7))
+        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7)) # TODO check this operation is performed correctly
 
         # Print the PQ vector info
         print('SUN:   POS ' +  str(PQ_Sun[0:3]) + ' - Q ' + str(PQ_Sun[3:7]))
@@ -548,7 +552,13 @@ try:
         for jj in np.arange(0, n_bodies):
             print('BODY (' + str(jj) + '):   POS: ' +
                 str(PQ_Bodies[int(jj), 0:3]) + ' - Q ' + str(PQ_Bodies[int(jj), 3:7]))
-            
+        
+        if DEBUG_MODE:
+            # Print DCMs corresponding to quaternions using the Blender API
+            print('Body 1 DCM: ', BODY_1.rotation_quaternion.to_matrix())
+            print('Camera DCM: ', CAM.rotation_quaternion.to_matrix())
+            print('Sun DCM: ', SUN.rotation_quaternion.to_matrix())
+
         #continue on the iteration
         ii = ii + 1
 
