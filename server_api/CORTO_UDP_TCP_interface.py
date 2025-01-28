@@ -334,7 +334,7 @@ try:
     no_client_counter = 0
     img_pack_sent = None
     max_no_client_counter = 1*5*10 # approx. 10 minutes of no client before closing the server
-    max_timeout_counter = 0.5*5*10 # approx. 60 seconds of no data before closing the server
+    max_timeout_counter = 0.5*5*120 # approx. 60 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
 
