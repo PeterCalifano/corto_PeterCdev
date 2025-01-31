@@ -23,8 +23,11 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
+DEBUG_MODE = True
+
 from genericpath import exists
 import socket
+from ssl import socket_error
 from time import sleep
 import numpy as np
 import bpy
@@ -182,6 +185,7 @@ try:
     port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
+    tcpTimeOutValue = 120 # [s]
 
     print('Parameters loaded successfully!\n')
     # Check if output_path exists, if not create it
@@ -274,8 +278,10 @@ try:
         return
 
     def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
-        # TODO function to rework, generalize and make more readable
 
+        # TODO function to rework, generalize and make more readable
+        # Add also a check on the quaternions (must be unit quaternions)
+        
         SUN.location = [0,0,0] # Because in Blender it is indifferent where the sun is located
         CAM.location = [PQ_SC[0], PQ_SC[1], PQ_SC[2]]
         BODY_1.location = [PQ_Bodies[0,0],PQ_Bodies[0,1],PQ_Bodies[0,2]]
@@ -296,22 +302,22 @@ try:
     #### (5) ESTABLISH UDP/TCP CONNECTION ####
     print("Starting the UDP/TCP server...\n")
 
-    r = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    UDPrecvSocket = socket.socket(socket.AF_INET, type=socket.SOCK_DGRAM)
+    TCPsendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # Set TCP server socket
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.settimeout(120)
+    TCPsendSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    TCPsendSocket.settimeout(tcpTimeOutValue)
 
     try:
-        r.bind((address, port_M2B))
-        r.setblocking(False)  # Non-blocking for receiving data
+        UDPrecvSocket.bind((address, port_M2B))
+        UDPrecvSocket.setblocking(False)  # Non-blocking for receiving data
         print(f"Socket successfully bound to {address}:{port_M2B}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
         sys.exit(1)
 
     try:
-        s.bind((address, port_B2M))
+        TCPsendSocket.bind((address, port_B2M))
         print(f"Socket successfully bound to {address}:{port_B2M}")
     except OSError as e:
         print(f"Failed to bind socket: {e}")
@@ -323,36 +329,32 @@ try:
 
     # r.listen()  # Not needed for UDP
     print(f'Waiting for data from client receiver on port {port_M2B}...')
-    s.listen() 
-    (clientsocket_send, address) = s.accept()
+    TCPsendSocket.listen() 
+    (clientsocket_send, address) = TCPsendSocket.accept()
     print('Client connected from', address,' as receiver\n')
 
     #### (6) RECEIVE DATA AND RENDERING ####
     receiving_flag = True
     disconnect_flag = False
     bytes_recv_udp = 0
-    no_client_counter = 0
-    img_pack_sent = None
-    max_no_client_counter = 1*5*10 # approx. 10 minutes of no client before closing the server
-    max_timeout_counter = 0.5*5*120 # approx. 60 seconds of no data before closing the server
+    numpy_data_array_prev = None
+    max_timeout_counter = 0.5*120*2 # approx. 120 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
-        if no_client_counter >= max_no_client_counter:
-            raise RuntimeError("Maximum number of iterations without client connected. Closing the server...")
         try:
             while bytes_recv_udp == 0:
                 # Wait for new connection
                 if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
                     # Reset flags and arrays
-                    img_pack_sent = None
+                    numpy_data_array_prev = None
                     data_buffer = None
                     ii = 0
 
-                    s.listen()
-                    (clientsocket_send, address) = s.accept()
+                    print(f"Waiting for new connection from client receiver on port {port_M2B}. Timeout set equal to {tcpTimeOutValue}...")
+                    (clientsocket_send, address) = TCPsendSocket.accept()
 
                     print('Client connected from', address,' as receiver\n')
                     disconnect_flag = False
@@ -365,17 +367,19 @@ try:
                         raise ConnectionResetError( "ACHTUNG: No data received from client for too long, disconnecting...")
                     
                     print("Attempting to get data from client...\n")  
-                    data_buffer, address_recv = r.recvfrom(512)  
+                    data_buffer, address_recv = UDPrecvSocket.recvfrom(512)  
                     bytes_recv_udp = len(data_buffer)
 
                     #data_checksum = sum(data_buffer)
 
                     if bytes_recv_udp == 0 or data_buffer is None:
-                        raise BlockingIOError("ACHTUNG: No data received from client!")
+                        raise BlockingIOError("ACHTUNG: No data received from client, but !")
+                    else:
+                        timeout_counter = 0  # Reset the timeout counter
 
 
                 except BlockingIOError:
-                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...\n")
+                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...")
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
                     data_buffer = None
@@ -387,9 +391,6 @@ try:
                 #    bytes_recv_udp = len(data_buffer)
                 #else:
                 #    bytes_recv_udp = 0
-                sleep(1)
-                no_client_counter += 1
-                print(f"No client connected since {no_client_counter} seconds... Waiting for max {max_no_client_counter} [s]\n")
 
             #if data_buffer is None:
             #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
@@ -407,31 +408,43 @@ try:
             
             #checkByte = clientsocket_send.recvfrom(0, socket.MSG_DONTWAIT | socket.MSG_PEEK) # Try to read 1 byte without blocking and without removing it from buffer (peek only)
 
-        except (ConnectionResetError, socket.error):
-            print("\nConnectionResetError or socket.error: Client closed the connection. Closing connection to client...")
+        except (ConnectionResetError):
+            print("\nConnectionResetError: no open connection or client disconnection.")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
-            
-            print("Waiting for new connection...\n")
             clientsocket_send.close()
             continue 
+
+        except (BrokenPipeError):
+            print("\nBrokenPipeError: no open connection or client disconnection.")
+            print("Server will continue operation waiting for a reconnection...")
+            disconnect_flag = True  # Make the server wait for a reconnection
+            bytes_recv_udp = 0
+            clientsocket_send.close()
+            continue
 
         except RuntimeError as e:
             print(f"\nRuntimeError: {e}")
             print("Server will continue operation waiting for a reconnection...")
             disconnect_flag = True  # Make the server wait for a reconnection
             bytes_recv_udp = 0
-            print("Waiting for new connection...\n")
             clientsocket_send.close()
             continue
 
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt: Closing the server...\n")
-            r.close()
+            UDPrecvSocket.close()
             clientsocket_send.close()
-            s.close()
+            TCPsendSocket.close()
             sys.exit(0)
+
+        except socket.error as socket_err:
+            print(f"Unrecoverable exception occurred: {socket_err}\n")
+            UDPrecvSocket.close()
+            clientsocket_send.close()
+            TCPsendSocket.close()
+            sys.exit(1) 
 
 
         # Casting to numpy array
@@ -463,7 +476,7 @@ try:
         PQ_Sun = numpy_data_array[0:7]
         PQ_SC = numpy_data_array[7:14]
         PQ_Bodies = numpy_data_array[14:]
-        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7))
+        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7)) # TODO check this operation is performed correctly
 
         # Print the PQ vector info
         print('SUN:   POS ' +  str(PQ_Sun[0:3]) + ' - Q ' + str(PQ_Sun[3:7]))
@@ -475,6 +488,14 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
 
+        # Check data freshness
+        if numpy_data_array_prev is not None:
+            if (numpy_data_array_prev == numpy_data_array).all():
+                raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
+
+        # Copy sent bytes for error checking # FIXME, not sure this is working as intended
+        numpy_data_array_prev = copy.deepcopy(numpy_data_array)
+        
         try:
             if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
                 Render(ii) # Render function call, uses data set by PositionAll
@@ -499,20 +520,14 @@ try:
 
             print(f"Sending image buffer of size {len(img_pack)} to client...\n")
 
-            # Check data freshness
-            if img_pack_sent is not None:
-                if img_pack_sent == img_pack:
-                    raise RuntimeError("ACHTUNG: Server attempted to send old image pack!")
-                
             clientsocket_send.send(img_pack)
             
-            # Copy sent bytes for error checking
-            img_pack_sent = copy.deepcopy(img_pack)
+
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Closing the server...\n")
-            r.close()
-            s.close()
+            UDPrecvSocket.close()
+            TCPsendSocket.close()
             sys.exit(0)
 
         except (socket.error, BrokenPipeError, ConnectionResetError, OSError) as e:
@@ -536,19 +551,25 @@ try:
         for jj in np.arange(0, n_bodies):
             print('BODY (' + str(jj) + '):   POS: ' +
                 str(PQ_Bodies[int(jj), 0:3]) + ' - Q ' + str(PQ_Bodies[int(jj), 3:7]))
-            
+        
+        if DEBUG_MODE:
+            # Print DCMs corresponding to quaternions using the Blender API
+            print('Body 1 DCM: ', BODY_1.rotation_quaternion.to_matrix())
+            print('Camera DCM: ', CAM.rotation_quaternion.to_matrix())
+            print('Sun DCM: ', SUN.rotation_quaternion.to_matrix())
+
         #continue on the iteration
         ii = ii + 1
 
 
 except KeyboardInterrupt:
     print("KeyboardInterrupt: Closing the server...\n")
-    r.close()
-    s.close()
+    UDPrecvSocket.close()
+    TCPsendSocket.close()
     sys.exit(0)
 except (socket.error, RuntimeError, OSError) as e:
     print(f"Unrecoverable exception occurred: {e}\n")
-    r.close()
-    s.close()
+    UDPrecvSocket.close()
+    TCPsendSocket.close()
     sys.exit(1)
 
