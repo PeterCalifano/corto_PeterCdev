@@ -23,7 +23,7 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
-DEBUG_MODE = True
+DEBUG_MODE = False # Set to True to enable additional printout
 
 from genericpath import exists
 import socket
@@ -270,6 +270,8 @@ try:
     print('OK')
 
     print('Defining rendering functions...', end='')
+    # TODO (PC) declare these functions at the beginning of the script
+    # TODO (PC) wrap the relevant code in the main program
     #### (4) FUNCTION DEFINITIONS ####
     def Render(ii):
         name = '{:06d}.png'.format(int(ii))
@@ -354,7 +356,7 @@ try:
                     ii = 0
 
                     print(f"Waiting for new connection from client receiver on port {port_M2B}. Timeout set equal to {tcpTimeOutValue}...")
-                    (clientsocket_send, address) = TCPsendSocket.accept()
+                    (clientsocket_send, address) = TCPsendSocket.accept() # FIXME new client connection fails with connection reset error
 
                     print('Client connected from', address,' as receiver\n')
                     disconnect_flag = False
@@ -387,13 +389,8 @@ try:
                     sleep(0.5) 
                     continue  
 
-                #if exists(data_buffer):
-                #    bytes_recv_udp = len(data_buffer)
-                #else:
-                #    bytes_recv_udp = 0
-
-            #if data_buffer is None:
-            #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
+            if data_buffer is None:
+                raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
             
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
@@ -460,7 +457,6 @@ try:
         print(f"Array shape: {numpy_data_array.shape}\n")
 
         # Number of bodies apart from CAM and SUN
-        # Number of bodies apart from CAM and SUN
         n_bodies = (numOfValues - 14)/7  # Must be integer!
 
         if n_bodies % 1 != 0:
@@ -493,7 +489,7 @@ try:
             if (numpy_data_array_prev == numpy_data_array).all():
                 raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
 
-        # Copy sent bytes for error checking # FIXME, not sure this is working as intended
+        # Copy sent bytes for error checking 
         numpy_data_array_prev = copy.deepcopy(numpy_data_array)
         
         try:
@@ -505,18 +501,19 @@ try:
                 img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
 
                 # Get the type of the first pixel value
-                pixel_dtype = type(img_read.pixels[0]) # FIXME (PC) ERROR IN DTYPE!
-                print(f"Image datatype: {pixel_dtype}\n")
+                pixel_dtype = type(img_read.pixels[0])
+                print(f"\tImage datatype: {pixel_dtype}")
                 
                 # Convert to a NumPy array using the same type
-                img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the RGBA image to a vector
-                print(f"Image datatype interpreted by numpy: {img_reshaped_vec.dtype}\n")
+                img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the image matrix to a linear array
+                print(f"\tImage datatype interpreted by numpy: {img_reshaped_vec.dtype}")
 
             else:
+                # DOUBT: why 4 channels if Blender is using 3 (RGB) for rendering? Set in bpy.context.scene.render.image_settings.color_mode property
                 img_reshaped_vec = np.float64(np.random.rand(4*sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
 
             # Pack the RGBA image as vector and transmit over TCP using numpy
-            img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endiannes here? # TODO add specification in config file! 
+            img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endianness here? # TODO add specification in config file! 
 
             print(f"Sending image buffer of size {len(img_pack)} to client...\n")
 
@@ -541,9 +538,9 @@ try:
 
             continue
 
-        print("Image sent correctly\n")
+        print("Image sent correctly.\n")
         
-        print('------------------ Summary of operations for monitoring ------------------')
+        print('------------------ Summary of operations and image state for monitoring ------------------')
         print(f"Received data from {address_recv} with {numOfValues} values\n")
         print(f"Number of bodies: {n_bodies}\n")
         print('SUN:   POS ' + str(PQ_Sun[0:3]) + ' - Q ' + str(PQ_Sun[3:7]))
