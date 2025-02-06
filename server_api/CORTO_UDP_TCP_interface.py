@@ -25,7 +25,6 @@
 
 DEBUG_MODE = False # Set to True to enable additional printout
 
-from genericpath import exists
 import socket
 from ssl import socket_error
 from time import sleep
@@ -81,6 +80,7 @@ except ImportError:
 script_path = os.path.dirname(os.path.realpath(__file__))
 CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "CORTO_SLX_CONFIG.yml")
 
+
 def is_socket_closed(sock: socket.socket) -> bool:
     """
     is_socket_closed _summary_
@@ -94,7 +94,7 @@ def is_socket_closed(sock: socket.socket) -> bool:
     """
     try:
         # This will try to read bytes without blocking and also without removing them from buffer (peek only)
-        data = sock.recv(1, socket.MSG_DONTWAIT | socket.MSG_PEEK)
+        data = sock.recv(16, socket.MSG_DONTWAIT | socket.MSG_PEEK)
         if len(data) == 0:
             return True
     except BlockingIOError:
@@ -185,6 +185,7 @@ try:
     port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
+    tcpTimeOutValue = 120 # [s]
     tcpTimeOutValue = 120 # [s]
 
     print('Parameters loaded successfully!\n')
@@ -389,8 +390,13 @@ try:
                     sleep(0.5) 
                     continue  
 
-            if data_buffer is None:
-                raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
+                #if exists(data_buffer):
+                #    bytes_recv_udp = len(data_buffer)
+                #else:
+                #    bytes_recv_udp = 0
+
+            #if data_buffer is None:
+            #    raise RuntimeError("ACHTUNG: data_buffer is None type. Failed to receive data from client!")
             
             # NOTE 28 doubles harcoded size of the data packet
             numOfValues = int(len(data_buffer) / 8)
@@ -489,7 +495,7 @@ try:
             if (numpy_data_array_prev == numpy_data_array).all():
                 raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
 
-        # Copy sent bytes for error checking 
+        # Copy sent bytes for error checking # FIXME, not sure this is working as intended
         numpy_data_array_prev = copy.deepcopy(numpy_data_array)
         
         try:
