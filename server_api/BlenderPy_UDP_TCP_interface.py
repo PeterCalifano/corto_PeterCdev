@@ -111,7 +111,7 @@ with open(CORTO_SLX_CONFIG_PATH, "r") as file:
     config = yaml.safe_load(file)
 
     # Get parsed configuration dicts
-    navcam_config = config.get("NavCam_params", {})
+    camera_config = config.get("Camera_params", {})
     rendering_engine_config = config.get("RenderingEngine_params", {})
     server_config = config.get("Server_params", {})
     blender_model_config = config.get("BlenderModel_params", {})
@@ -125,24 +125,24 @@ try:
     print('Assigning parameters from the configuration file...\n')
     # NAVCAM
     # [deg], Horizontal FOV of the NAVCAM
-    FOV_x = navcam_config.get("FOV_x")
+    FOV_x = camera_config.get("FOV_x")
     # [deg], Vertical FOV of the NAVCAM
-    FOV_y = navcam_config.get("FOX_y")
+    FOV_y = camera_config.get("FOX_y")
 
     # [pxl], Horizontal resolution of the images
-    sensor_size_x = navcam_config.get("sensor_size_x")
+    sensor_size_x = camera_config.get("sensor_size_x")
 
     # [pxl], Vertical resolution of the images
-    sensor_size_y = navcam_config.get("sensor_size_y")
+    sensor_size_y = camera_config.get("sensor_size_y")
 
     # [-], Number of channels of the images
-    n_channels = navcam_config.get("n_channels")
+    n_channels = camera_config.get("n_channels")
 
     # [-], Number of bit per pixel
-    bit_encoding = navcam_config.get("bit_encoding")
+    bit_encoding = camera_config.get("bit_encoding")
 
     # [-], Compression factor
-    compression = navcam_config.get("compression")
+    compression = camera_config.get("compression")
 
     # RENDERING ENGINE
     bpy.context.scene.render.engine = rendering_engine_config.get(
