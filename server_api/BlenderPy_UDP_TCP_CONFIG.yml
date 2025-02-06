@@ -4,7 +4,7 @@
 # NOTE: Make sure the configuration matches the loaded Blender file!
 # Author: Peter C., Date: 12 Jan 2025
 
-NavCam_params:
+Camera_params:
   FOV_x: 21  # [deg], Horizontal FOV of the NAVCAM
   FOV_y: 16  # [deg], Vertical FOV of the NAVCAM
   sensor_size_x: 2048  # [pxl], Horizontal resolution of the images
