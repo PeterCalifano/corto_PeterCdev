@@ -123,10 +123,10 @@ with open(CORTO_SLX_CONFIG_PATH, "r") as file:
 #### (1) PARAMETERS ####
 try:
     print('Assigning parameters from the configuration file...\n')
-    # NAVCAM
-    # [deg], Horizontal FOV of the NAVCAM
+    # CAMERA
+    # [deg], Horizontal FOV of the CAMERA
     FOV_x = camera_config.get("FOV_x")
-    # [deg], Vertical FOV of the NAVCAM
+    # [deg], Vertical FOV of the CAMERA
     FOV_y = camera_config.get("FOX_y")
 
     # [pxl], Horizontal resolution of the images
