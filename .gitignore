@@ -9,3 +9,4 @@ monet/input/*
 monet/output/*
 build*
 cortopy.egg-info
+**/*.png

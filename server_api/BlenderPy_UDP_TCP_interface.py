@@ -23,7 +23,7 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
-DEBUG_MODE = False # Set to True to enable additional printout
+DEBUG_MODE = True # Set to True to enable additional printout
 
 import socket
 from time import sleep
@@ -381,11 +381,13 @@ try:
 
 
                 except BlockingIOError:
-                    print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...")
+                    if not DEBUG_MODE:
+                        print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...")                
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
                     data_buffer = None
-                    timeout_counter += 1
+                    if not DEBUG_MODE:
+                        timeout_counter += 1
                     sleep(0.5) 
                     continue  
 
