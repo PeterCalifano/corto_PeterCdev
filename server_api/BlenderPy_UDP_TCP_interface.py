@@ -505,6 +505,8 @@ try:
                 # Read the pixels from the saved image
                 img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
 
+                # FIXME: image is RGB regardless of the color mode set in the config file! 
+
                 # Get the type of the first pixel value
                 pixel_dtype = type(img_read.pixels[0])
                 print(f"\tImage datatype: {pixel_dtype}")
