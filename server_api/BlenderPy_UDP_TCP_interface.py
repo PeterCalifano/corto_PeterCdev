@@ -159,6 +159,13 @@ try:
     # Set tile size (NOTE: option name is as below in newer Blender versions)
     bpy.context.scene.cycles.tile_size = rendering_engine_config.get(
         "tile_size")
+    
+    # Print rendering parameters
+    print('Rendering engine set to: ', bpy.context.scene.render.engine)
+    print('Rendering device set to: ', bpy.context.scene.cycles.device)
+    print('Number of samples set to: ', bpy.context.scene.cycles.samples)
+    print('Diffuse bounces set to: ', bpy.context.scene.cycles.diffuse_bounces)
+    print('Tile size set to: ', bpy.context.scene.cycles.tile_size)
 
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
