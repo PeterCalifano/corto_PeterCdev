@@ -77,7 +77,7 @@ except ImportError:
 
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
-CORTO_SLX_CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
+CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
@@ -107,7 +107,7 @@ def is_socket_closed(sock: socket.socket) -> bool:
 
 
 # Load the YAML configuration
-with open(CORTO_SLX_CONFIG_PATH, "r") as file:
+with open(CONFIG_PATH, "r") as file:
     config = yaml.safe_load(file)
 
     # Get parsed configuration dicts
