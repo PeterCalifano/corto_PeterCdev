@@ -497,6 +497,7 @@ try:
 
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
+        bpy.context.view_layer.update() # Call update to apply the changes to the scene
 
         # Check data freshness
         if numpy_data_array_prev is not None:

@@ -5,6 +5,7 @@ usage() {
     echo "Usage: $0 -m <model_path> -p <python_script>"
     echo "  -m    Path to the Blender model file (.blend)"
     echo "  -p    Path to the Python script file (.py)"
+    echo "  -f    Run Blender in the foreground (optional)"
     exit 1
 }
 
@@ -29,10 +30,12 @@ usage() {
 # -------------
 
 # Parse command-line arguments
-while getopts "m:p:" opt; do
+FOREGROUND_RUN=0 # Default: run Blender in the background
+while getopts "m:p:f" opt; do
     case $opt in
         m) MODEL_PATH="$OPTARG" ;;
         p) PYTHON_SCRIPT="$OPTARG" ;;
+        f) FOREGROUND_RUN=1 ;;
         *) usage ;;
     esac
 done
@@ -55,4 +58,8 @@ if [[ ! -f "$PYTHON_SCRIPT" ]]; then
 fi
 
 # Execute Blender with the provided paths
-blender --log-level 3 -b $MODEL_PATH -P $PYTHON_SCRIPT
+if [[ "$FOREGROUND_RUN" -eq 1 ]]; then
+    blender --log-level 3 $MODEL_PATH -P $PYTHON_SCRIPT
+else
+    blender --log-level 3 -b $MODEL_PATH -P $PYTHON_SCRIPT
+fi
