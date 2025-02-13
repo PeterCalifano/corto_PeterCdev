@@ -148,7 +148,7 @@ try:
     bpy.context.scene.render.engine = rendering_engine_config.get(
         "render_engine")  # 'CYCLES' or 'BLENDER_EEVEE'
     bpy.context.scene.cycles.device = rendering_engine_config.get(
-        "device")  # 'CPU' or 'GPU'
+        "device")  # 'CPU' or 'GPU' # NOTE This is a read-only property!
     bpy.context.scene.cycles.samples = rendering_engine_config.get(
         "samples")  # Number of samples for the rendering
 
