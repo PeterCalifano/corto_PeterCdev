@@ -77,7 +77,13 @@ except ImportError:
 
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
-CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
+
+# Check if file ext is .blend
+if not script_path.endswith(".blend"):
+    CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
+else: 
+    # Use hardcoded path (within blender)
+    CONFIG_PATH = os.path.join("/home/peterc/devDir/rendering-sw/corto_PeterCdev/server_api/BlenderPy_UDP_TCP_CONFIG.yml")
 
 
 def is_socket_closed(sock: socket.socket) -> bool:
@@ -498,6 +504,12 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
         bpy.context.view_layer.update() # Call update to apply the changes to the scene
+
+        # Force refreshing of Blender UI (little hack here)
+        if not (bpy.app.background):
+            bpy.context.view_layer.update()  # Call update to apply the changes to the scene
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+
 
         # Check data freshness
         if numpy_data_array_prev is not None:

@@ -523,6 +523,11 @@ try:
         # Position all bodies in the scene
         PositionAll(PQ_SC, PQ_Bodies, PQ_Sun, body_has_changed=body_has_changed, disable_caching=disable_caching)
 
+        # Force refreshing of Blender UI (little hack here)
+        if not(bpy.app.background):
+            bpy.context.view_layer.update() # Call update to apply the changes to the scene
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+
         # Check data freshness
         if numpy_data_array_prev is not None:
             if (numpy_data_array_prev == numpy_data_array).all():
