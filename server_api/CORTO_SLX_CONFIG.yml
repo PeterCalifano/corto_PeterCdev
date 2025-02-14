@@ -5,8 +5,8 @@
 # Author: Peter C., Date: 12 Jan 2025
 
 NavCam_params:
-  FOV_x: 21  # [deg], Horizontal FOV of the NAVCAM
-  FOV_y: 16  # [deg], Vertical FOV of the NAVCAM
+  FOV_x: 19.72  # [deg], Horizontal FOV of the NAVCAM
+  FOV_y: 14.86  # [deg], Vertical FOV of the NAVCAM
   sensor_size_x: 2048  # [pxl], Horizontal resolution of the images
   sensor_size_y: 1536  # [pxl], Vertical resolution of the images
   n_channels: 3  # [-], Number of channels of the images
