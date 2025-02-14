@@ -16,9 +16,9 @@ NavCam_params:
 RenderingEngine_params:
   render_engine: 'CYCLES'
   device: 'GPU'  # 'CPU' or 'GPU'
-  samples: 264  # Number of samples
+  samples: 128  # Number of samples
   diffuse_bounces: 0  # To avoid diffused light from D1 to D2. (4 default)
-  tile_size: 32  # Tile size for rendering # DOUBT what does this parameter change?
+  tile_size: 512  # Tile size for rendering # DOUBT what does this parameter change?
 
 BlenderModel_params:
   num_bodies: 1  # Number of bodies in the model  
