@@ -29,10 +29,12 @@ BlenderModel_params:
   specular_factor: 0  # Specularity value for the sun-light in Blender
 
 Server_params:
-  output_path: '/home/peterc/devDir/nav-backend/simulationCodes/data/datasets/TestCase_ParticlesApophis_RCS1_RTO_4t1_J11p0_60dt_5days' # Where Blender will save images
+  output_path: "/media/peterc/6426d3ea-1f91-40b7-93ab-7f00d034e5cd/datasets/UniformlyScatteredPointCloudsDatasets/Apophis/Dataset_UniformAzElPointCloud_Apophis_25k_ID0"
+
+ # Where Blender will save images
   address: "127.0.0.1"
-  port_M2B: 51002  # Port from Matlab to Blender
-  port_B2M: 30002  # Port from Blender to Matlab
+  port_M2B: 51007  # Port from Matlab to Blender
+  port_B2M: 30007  # Port from Blender to Matlab
   DUMMY_OUTPUT: false
   image_dtype: double   # Data type of the communication
   disable_caching: false  # Disable caching of bodies positions (always repositioned)
