@@ -77,8 +77,12 @@ except ImportError:
 
 # Set configuration file path. Default is the same folder of the script. # DEVNOTE: may be improved, but suffices for basic usage.
 script_path = os.path.dirname(os.path.realpath(__file__))
-CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
-
+# Check if file ext is .blend
+if not script_path.endswith(".blend"):
+    CONFIG_PATH = os.path.join(script_path, "BlenderPy_UDP_TCP_CONFIG.yml")
+else: 
+    # Use hardcoded path (within blender)
+    CONFIG_PATH = os.path.join("/home/peterc/devDir/rendering-sw/corto_PeterCdev/server_api/BlenderPy_UDP_TCP_CONFIG.yml")
 
 def is_socket_closed(sock: socket.socket) -> bool:
     """
@@ -195,11 +199,27 @@ try:
     tcpTimeOutValue = 120 # [s]
 
     print('Parameters loaded successfully!\n')
+
     # Check if output_path exists, if not create it
     if not os.path.exists(output_path):
         print('Output path does not exist. Creating it...')
         os.makedirs(output_path)
-    print('Output path set up correctly.')
+    else:
+        # If it exists, check if it contains a file named "000001.png" and modify output path to avoid overwriting
+        image_test_path = os.path.join(output_path, "000001.png")
+        if os.path.exists(image_test_path):
+            counter = 0
+            new_output_path = f"{output_path}_{counter}"
+            # Keep incrementing the counter until we find a folder that does not contain a "000000.png" file
+            while os.path.exists(new_output_path) and os.path.exists(os.path.join(new_output_path, "000000.png")):
+                counter += 1
+                new_output_path = f"{output_path}_{counter}"
+            print(f'Found file pattern 000001.png in {output_path}.\n' 
+                  f'Changing output path to {new_output_path}')
+            os.makedirs(new_output_path, exist_ok=True)
+            output_path = new_output_path
+
+    print('Output path set up correctly: ', output_path)
 
     print('Setting up Blender file...\n')
     #### (2) SCENE SET UP ####
