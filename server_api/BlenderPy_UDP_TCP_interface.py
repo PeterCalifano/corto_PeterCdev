@@ -210,11 +210,11 @@ try:
         image_test_path = os.path.join(output_path, "000001.png")
         if os.path.exists(image_test_path):
             counter = 0
-            new_output_path = f"{output_path}_{counter}"
+            new_output_path = f"{output_path}_{counter:02d}"
             # Keep incrementing the counter until we find a folder that does not contain a "000000.png" file
             while os.path.exists(new_output_path) and os.path.exists(os.path.join(new_output_path, "000000.png")):
                 counter += 1
-                new_output_path = f"{output_path}_{counter}"
+                new_output_path = f"{output_path}_{counter:02d}"
             print(f'Found file pattern 000001.png in {output_path}.\n' 
                   f'Changing output path to {new_output_path}')
             os.makedirs(new_output_path, exist_ok=True)
