@@ -1,0 +1,42 @@
+# DESCRIPTION: 
+# Configuration file for the CORTO_UDP_TCP_interface for general purpose CORTOpyCommManager MATLAB class
+# This file is used to set the parameters of the NAVCAM, the rendering engine, the Blender file model and the UDP/TCP servers (recv/send).
+# NOTE: Make sure the configuration matches the loaded Blender file!
+# Author: Peter C., Date: 12 Jan 2025
+
+Camera_params:
+  FOV_x: 19.72  # [deg], Horizontal FOV of the NAVCAM
+  FOV_y: 14.86  # [deg], Vertical FOV of the NAVCAM
+  sensor_size_x: 2048  # [pxl], Horizontal resolution of the images
+  sensor_size_y: 1536  # [pxl], Vertical resolution of the images
+  n_channels: 3  # [-], Number of channels of the images
+  # n_channels_output: 1 # [-], Number of channels of the image to send
+  bit_encoding: 16  # [-], Number of bits per pixel
+  compression: 15  # [-], Compression factor
+
+RenderingEngine_params:
+  file_format: 'PNG'  # File format for the images or 'OPEN_EXR' for floating point
+  render_engine: 'CYCLES'
+  device: 'GPU'  # 'CPU' or 'GPU'
+  samples: 4  # Number of samples
+  diffuse_bounces: 0  # To avoid diffused light
+  tile_size: 512  # Tile size for rendering # Changes size of tiles processed by renderer. Larger size better for parallelization.
+
+BlenderModel_params:
+  num_bodies: 1  # Number of bodies in the model  
+  light_names: ['Sun']  # Name of the sun-light in the Blender file. Note: in general "Sun" or "Light" are used.
+  bodies_names: ['Apophis'] # Names of the bodies in the Blender file 
+  sun_energy: 2  # Energy value of the sun-light in Blender
+  specular_factor: 0  # Specularity value for the sun-light in Blender
+
+Server_params:
+  output_path: "/media/peterc/Main/linux_data/datasets/TrajectoriesDatasets/TestCase_ItokawaAsApophis_RCS1_RTO_4t1_J11p0_1dt_0p00347222days"
+
+
+ # Where Blender will save images
+  address: "127.0.0.1"
+  port_M2B: 51007  # Port from Matlab to Blender
+  port_B2M: 30007  # Port from Blender to Matlab
+  DUMMY_OUTPUT: false
+  image_dtype: double   # Data type of the communication
+  disable_caching: false  # Disable caching of bodies positions (always repositioned)
