@@ -134,37 +134,37 @@ try:
     FOV_y = camera_config.get("FOX_y")
 
     # [pxl], Horizontal resolution of the images
-    sensor_size_x = camera_config.get("sensor_size_x")
+    sensor_size_x = int(camera_config.get("sensor_size_x"))
 
     # [pxl], Vertical resolution of the images
-    sensor_size_y = camera_config.get("sensor_size_y")
+    sensor_size_y = int(camera_config.get("sensor_size_y"))
 
     # [-], Number of channels of the images
-    n_channels = camera_config.get("n_channels")
+    n_channels = int(camera_config.get("n_channels"))
 
     # [-], Number of bit per pixel
-    bit_encoding = camera_config.get("bit_encoding")
+    bit_encoding = int(camera_config.get("bit_encoding"))
 
     # [-], Compression factor
-    compression = camera_config.get("compression")
+    compression = int(camera_config.get("compression"))
 
     # RENDERING ENGINE
     bpy.context.scene.render.engine = rendering_engine_config.get(
         "render_engine")  # 'CYCLES' or 'BLENDER_EEVEE'
     bpy.context.scene.cycles.device = rendering_engine_config.get(
         "device")  # 'CPU' or 'GPU' # NOTE This is a read-only property!
-    bpy.context.scene.cycles.samples = rendering_engine_config.get(
-        "samples")  # Number of samples for the rendering
+    bpy.context.scene.cycles.samples = int(rendering_engine_config.get(
+        "samples"))  # Number of samples for the rendering
 
     file_format = rendering_engine_config.get("file_format")  # 'PNG' or 'OPEN_EXR'
 
     # To avoid diffused light from D1 to D2. (4) default
-    bpy.context.scene.cycles.diffuse_bounces = rendering_engine_config.get(
-        "diffuse_bounces")
+    bpy.context.scene.cycles.diffuse_bounces = int(rendering_engine_config.get(
+        "diffuse_bounces"))
 
     # Set tile size (NOTE: option name is as below in newer Blender versions)
-    bpy.context.scene.cycles.tile_size = rendering_engine_config.get(
-        "tile_size")
+    bpy.context.scene.cycles.tile_size = int(rendering_engine_config.get(
+        "tile_size"))
 
     # Set file format – try 'PNG' or 'OPEN_EXR'
     bpy.context.scene.render.image_settings.file_format = str(file_format)
@@ -180,7 +180,7 @@ try:
 
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
-    num_bodies = blender_model_config.get("num_bodies")
+    num_bodies = int(blender_model_config.get("num_bodies"))
 
     # Name of the bodies in the Blender scene
     model_name_1 = blender_model_config.get("bodies_names")[0]
@@ -199,8 +199,8 @@ try:
     # SERVER
     output_path = server_config.get("output_path")  # Output path for the images
     address = server_config.get("address")  # Address of the server
-    port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
-    port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
+    port_M2B = int(server_config.get("port_M2B"))  # Port from Matlab to Blender
+    port_B2M = int(server_config.get("port_B2M"))  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
     tcpTimeOutValue = 120 # [s]
     tcpTimeOutValue = 120 # [s]
