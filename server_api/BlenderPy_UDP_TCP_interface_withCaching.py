@@ -27,7 +27,6 @@ DEBUG_MODE = True # Set to True to enable additional printout
 
 import socket
 from time import sleep
-from chevron import render
 import numpy as np
 import bpy
 import sys, os
