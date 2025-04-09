@@ -27,6 +27,7 @@ DEBUG_MODE = True # Set to True to enable additional printout
 
 import socket
 from time import sleep
+from chevron import render
 import numpy as np
 import bpy
 import sys, os
@@ -156,6 +157,8 @@ try:
     bpy.context.scene.cycles.samples = rendering_engine_config.get(
         "samples")  # Number of samples for the rendering
 
+    file_format = rendering_engine_config.get("file_format")  # 'PNG' or 'OPEN_EXR'
+
     # To avoid diffused light from D1 to D2. (4) default
     bpy.context.scene.cycles.diffuse_bounces = rendering_engine_config.get(
         "diffuse_bounces")
@@ -163,13 +166,18 @@ try:
     # Set tile size (NOTE: option name is as below in newer Blender versions)
     bpy.context.scene.cycles.tile_size = rendering_engine_config.get(
         "tile_size")
-    
+
+    # Set file format – try 'PNG' or 'OPEN_EXR'
+    bpy.context.scene.render.image_settings.file_format = str(file_format)
+
     # Print rendering parameters
     print('Rendering engine set to: ', bpy.context.scene.render.engine)
     print('Rendering device set to: ', bpy.context.scene.cycles.device)
     print('Number of samples set to: ', bpy.context.scene.cycles.samples)
     print('Diffuse bounces set to: ', bpy.context.scene.cycles.diffuse_bounces)
     print('Tile size set to: ', bpy.context.scene.cycles.tile_size)
+    print('Image format set to: ', bpy.context.scene.render.image_settings.file_format)
+    print('Color depth (bit encoding) set to: ', bit_encoding)
 
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
