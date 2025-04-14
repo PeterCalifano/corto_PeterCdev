@@ -11,7 +11,7 @@ Camera_params:
   sensor_size_y: 1536  # [pxl], Vertical resolution of the images
   n_channels: 3  # [-], Number of channels of the images
   # n_channels_output: 1 # [-], Number of channels of the image to send
-  bit_encoding: 16  # [-], Number of bits per pixel
+  bit_encoding: 8  # [-], Number of bits per pixel
   compression: 15  # [-], Compression factor
 
 RenderingEngine_params:
