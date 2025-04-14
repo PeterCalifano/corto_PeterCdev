@@ -10,3 +10,4 @@ monet/output/*
 build*
 cortopy.egg-info
 **/*.png
+server_api/BlenderPy_UDP_TCP_CONFIG.yml
