@@ -11,14 +11,14 @@ Camera_params:
   sensor_size_y: 1536  # [pxl], Vertical resolution of the images
   n_channels: 3  # [-], Number of channels of the images
   # n_channels_output: 1 # [-], Number of channels of the image to send
-  bit_encoding: 16  # [-], Number of bits per pixel
+  bit_encoding: 8  # [-], Number of bits per pixel
   compression: 15  # [-], Compression factor
 
 RenderingEngine_params:
   file_format: 'PNG'  # File format for the images or 'OPEN_EXR' for floating point
   render_engine: 'CYCLES'
   device: 'GPU'  # 'CPU' or 'GPU'
-  samples: 4  # Number of samples
+  samples: 8  # Number of samples
   diffuse_bounces: 0  # To avoid diffused light
   tile_size: 512  # Tile size for rendering # Changes size of tiles processed by renderer. Larger size better for parallelization.
 
