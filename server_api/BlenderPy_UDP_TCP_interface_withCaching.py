@@ -23,7 +23,7 @@
         ValueError: If the number of bodies is not equal to the value set in the config file.
 """
 
-DEBUG_MODE = True # Set to True to enable additional printout
+DEBUG_MODE = False # Set to True to enable additional printout
 
 import socket
 from time import sleep
@@ -157,6 +157,7 @@ try:
         "samples"))  # Number of samples for the rendering
 
     file_format = rendering_engine_config.get("file_format")  # 'PNG' or 'OPEN_EXR'
+    save_binary_mask_output = rendering_engine_config.get("bSaveGeomVisibilityBoolMask", False)
 
     # To avoid diffused light from D1 to D2. (4) default
     bpy.context.scene.cycles.diffuse_bounces = int(rendering_engine_config.get(
@@ -177,6 +178,18 @@ try:
     print('Tile size set to: ', bpy.context.scene.cycles.tile_size)
     print('Image format set to: ', bpy.context.scene.render.image_settings.file_format)
     print('Color depth (bit encoding) set to: ', bit_encoding)
+    print('Compression factor set to: ', compression)
+    print('Binary visibility mask generation: ', save_binary_mask_output)
+
+    # Print camera parameters
+    print('Camera FOV_x set to: ', FOV_x)
+    print('Camera FOV_y set to: ', FOV_y)
+    print('Camera sensor size x set to: ', sensor_size_x)
+    print('Camera sensor size y set to: ', sensor_size_y)
+    print('Camera number of channels set to: ', n_channels)
+
+    # Setup mask generation 
+    # TODO
 
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
@@ -203,9 +216,14 @@ try:
     port_B2M = int(server_config.get("port_B2M"))  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
     tcpTimeOutValue = 120 # [s]
-    tcpTimeOutValue = 120 # [s]
 
     print('Parameters loaded successfully!\n')
+
+    ## Output path definition
+    # If output folder name is "images", get dirname
+    if output_path.endswith("images"):
+        # Get the parent directory of the output path
+        output_path = os.path.dirname(output_path)
 
     # Check if output_path exists, if not create it
     if not os.path.exists(output_path):
@@ -213,20 +231,38 @@ try:
         os.makedirs(output_path)
     else:
         # If it exists, check if it contains a file named "000001.png" and modify output path to avoid overwriting
-        image_test_path = os.path.join(output_path, "000001.png")
-        if os.path.exists(image_test_path):
+        image_test_path = os.path.join(output_path, "images", "000001.png")
+        image_test_path_legacy = os.path.join(output_path, "000001.png")
+
+        if os.path.exists(image_test_path) or os.path.exists(image_test_path_legacy):
             counter = 0
             new_output_path = f"{output_path}_{counter:02d}"
             # Keep incrementing the counter until we find a folder that does not contain a "000000.png" file
-            while os.path.exists(new_output_path) and os.path.exists(os.path.join(new_output_path, "000000.png")):
+            while os.path.exists(new_output_path) and \
+                os.path.exists(os.path.join(new_output_path, "000000.png")) and \
+                os.path.exists(os.path.join(new_output_path, "images", "000001.png")):
+
                 counter += 1
                 new_output_path = f"{output_path}_{counter:02d}"
-            print(f'Found file pattern 000001.png in {output_path}.\n' 
+
+            print(f'Found file pattern 000001.png in {output_path} or {os.path.join(output_path, "images")}.\n'
                   f'Changing output path to {new_output_path}')
+            
             os.makedirs(new_output_path, exist_ok=True)
             output_path = new_output_path
 
-    print('Output path set up correctly: ', output_path)
+    print('Dataset root path set up correctly: ', output_path)
+    output_imgs_path = os.path.join(output_path, "images")
+    binary_masks_path = os.path.join(output_path, "binary_masks")
+
+    # Make dirs 
+    os.makedirs(output_imgs_path, exist_ok=True)
+    print('Output images path set up correctly: ', output_imgs_path)
+
+    if save_binary_mask_output:
+        os.makedirs(binary_masks_path, exist_ok=True)
+        print('Output binary masks path set up correctly: ', binary_masks_path)
+    
 
     print('Setting up Blender file...\n')
     #### (2) SCENE SET UP ####
@@ -316,10 +352,47 @@ try:
     # TODO (PC) declare these functions at the beginning of the script
     # TODO (PC) wrap the relevant code in the main program
     #### (4) FUNCTION DEFINITIONS ####
+
     def Render(ii) -> None:
-        name = '{:06d}.png'.format(int(ii))
-        bpy.context.scene.render.filepath = output_path + '/' + name
-        bpy.ops.render.render(write_still=1)
+
+        # Filenames definition
+        img_number = '{:06d}'.format(int(ii))
+        # Set frame number
+        bpy.context.scene.frame_set(ii) 
+        # DEVNOTE Blender always pads to 4 digits. If exceed uses the number directly 
+        img_name = f'{img_number}'
+
+        #mask_file_output = binary_masks_path + '/' + img_number + ".png"
+
+        # Set img output path
+        bpy.context.scene.render.filepath = output_imgs_path + '/' + img_name
+
+        # Get file output node for mask
+        tree_file_output_node = bpy.context.scene.node_tree.nodes.get("BinaryMaskOutput", None)
+
+        # Set mask output path if required and compositing node exists
+        if save_binary_mask_output and tree_file_output_node is not None:
+            tree_file_output_node.base_path = binary_masks_path
+            tree_file_output_node.file_slots[0].path = ""  # Set to null so that Blender only uses the frame number
+
+
+        elif save_binary_mask_output:
+            # Print warning to user that node does not exist
+            print("\033[93mWARNING: Binary mask output node (BinaryMaskOutput) does not exist. Mask will not be saved.\033[0m")
+
+
+        # Render call
+        bpy.ops.render.render(write_still=True)
+
+        # Rename mask output file
+        if save_binary_mask_output and tree_file_output_node is not None:
+
+            # Rename file from frame number to desired one
+            mask_file_name = os.path.join(binary_masks_path, f'{ii:04d}' + ".png")
+
+            # Rename the file to the desired name
+            os.rename(mask_file_name, os.path.join(binary_masks_path, f'{ii:06d}' + ".png"))
+
         return
 
     def PositionAll(PQ_SC, PQ_Bodies, PQ_Sun, body_has_changed: bool = True, disable_caching: bool = False) -> None:
@@ -420,7 +493,7 @@ try:
                     #data_checksum = sum(data_buffer)
 
                     if bytes_recv_udp == 0 or data_buffer is None:
-                        raise BlockingIOError("ACHTUNG: No data received from client, but !")
+                        raise BlockingIOError("ACHTUNG: No data received from client!")
                     else:
                         timeout_counter = 0  # Reset the timeout counter
 
@@ -564,10 +637,15 @@ try:
                 Render(ii) # Render function call, uses data set by PositionAll
                 #data_freshness_flag = False # Set freshness data to false
 
-                # Read the pixels from the saved image
-                img_read = bpy.data.images.load(filepath=output_path + '/' + '{:06d}.png'.format(int(ii))) 
+                if file_format.lower() == 'open_exr':
+                    img_format = 'exr'
+                elif file_format.lower() == 'png':
+                    img_format = 'png'
 
-                # FIXME: image is RGB regardless of the color mode set in the config file! 
+                # Read the pixels from the saved image
+                img_read = bpy.data.images.load(filepath=os.path.join(output_imgs_path, '{:06d}.{}'.format(int(ii), img_format)))
+
+                # FIXME: image is RGB regardless of the color mode set in the config file!
 
                 # Get the type of the first pixel value
                 pixel_dtype = type(img_read.pixels[0])
@@ -588,15 +666,13 @@ try:
 
             clientsocket_send.send(img_pack)
             
-
-
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Closing the server...\n")
             UDPrecvSocket.close()
             TCPsendSocket.close()
             sys.exit(0)
 
-        except (socket.error, BrokenPipeError, ConnectionResetError, OSError) as e:
+        except (socket.error, BrokenPipeError, ConnectionResetError) as e:
             print(f"Error sending image data to client: {e}. Closing connection to client...\n")
             receiving_flag = True  # Stop the server loop
             disconnect_flag = True  # Close the connection to the client
@@ -605,6 +681,10 @@ try:
             clientsocket_send.close()
             bytes_recv_udp = 0
 
+            continue
+
+        except FileNotFoundError as e:
+            print(f'Error while attempting to fetch file: {e}')
             continue
 
         print("Image sent correctly.\n")
