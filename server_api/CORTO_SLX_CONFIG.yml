@@ -11,14 +11,14 @@ NavCam_params:
   sensor_size_y: 1536  # [pxl], Vertical resolution of the images
   n_channels: 3  # [-], Number of channels of the images
   bit_encoding: 8  # [-], Number of bits per pixel
-  compression: 15  # [-], Compression factor
+  compression: 20  # [-], Compression factor
 
 RenderingEngine_params:
   render_engine: 'CYCLES'
   device: 'GPU'  # 'CPU' or 'GPU'
-  samples: 512  # Number of samples
+  samples: 8  # Number of samples
   diffuse_bounces: 0  # To avoid diffused light from D1 to D2. (4 default)
-  tile_size: 2048  # Tile size for rendering 
+  tile_size: 256  # Tile size for rendering 
 
 BlenderModel_params:
   num_bodies: 1  # Number of bodies in the model  
