@@ -279,7 +279,19 @@ try:
     if len(light_names) > 1:
         raise NotImplementedError("ACHTUNG: More than one light object is not supported yet!")
 
-    SUN = bpy.data.objects[light_names[0]]
+    try:
+        SUN = bpy.data.objects[light_names[0]]
+    except:
+        print(f'Light object {light_names[0]} not found. Attempting to check for usual alternative (Sun/Light)...')
+
+        if light_names[0] == "Sun":
+            SUN = bpy.data.objects["Light"]
+        elif light_names[0] == "Light":
+            SUN = bpy.data.objects["Sun"]
+        else: 
+            raise ValueError(f"ACHTUNG: Light object {light_names[0]} not found. Please check the configuration file and alternative check failed.")
+
+    print("Found light object: ", SUN.name)
     BODY_1 = bpy.data.objects[model_name_1]
     if num_bodies > 1:
         BODY_2 = bpy.data.objects[model_name_2]
@@ -291,7 +303,7 @@ try:
     CAM.data.lens_unit = 'FOV'
     CAM.data.angle = FOV_x * np.pi / 180
     CAM.data.clip_start = 0.5 # [m] in Blender, but scaled in km
-    CAM.data.clip_end = 100 # [m] in Blender, but scaled in km
+    CAM.data.clip_end = 1000 # [m] in Blender, but scaled in km
     print('OK')
 
     print('Setting up scene.render properties...', end='')
