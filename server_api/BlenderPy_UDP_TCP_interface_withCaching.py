@@ -142,6 +142,9 @@ try:
     # [-], Number of channels of the images
     n_channels = int(camera_config.get("n_channels"))
 
+    if n_channels not in [1, 3, 4]:
+        raise ValueError("ACHTUNG: Number of channels must be 1, 3 or 4! Found: {}".format(n_channels))
+
     # [-], Number of bit per pixel
     bit_encoding = int(camera_config.get("bit_encoding"))
 
@@ -188,6 +191,9 @@ try:
     print('Camera sensor size y set to: ', sensor_size_y)
     print('Camera number of channels set to: ', n_channels)
 
+    # SERVER PARAMS
+    max_inactivity_timeout = server_config["max_inactivity_timeout"] # Set server timeout counter from configuration 
+    
     # Setup mask generation 
     # TODO
 
@@ -323,7 +329,6 @@ try:
     disable_caching = server_config.get("disable_caching", False)
     
     # Initialization of Bodies, Cam and Sun
-
     CAM.location = [10, 0, 0]
     SUN.location = [0, 0, 0]
 
@@ -368,6 +373,7 @@ try:
         bpy.context.scene.render.filepath = output_imgs_path + '/' + img_name
 
         # Get file output node for mask
+        # DEVNOTE: output node must be named "BinaryMaskOutput"
         tree_file_output_node = bpy.context.scene.node_tree.nodes.get("BinaryMaskOutput", None)
 
         # Set mask output path if required and compositing node exists
@@ -457,8 +463,7 @@ try:
     receiving_flag = True
     disconnect_flag = False
     bytes_recv_udp = 0
-    numpy_data_array_prev = None
-    max_timeout_counter = 0.5*600*2 # approx. 120 seconds of no data before closing the server
+    numpy_data_array_prev = None    
     timeout_counter = 0
     ii = 0
 
@@ -466,6 +471,7 @@ try:
     while receiving_flag:
         try:
             while bytes_recv_udp == 0:
+
                 # Wait for new connection
                 if disconnect_flag: # DEVNOTE (PC) definitely not a good coding pattern, but sufficient for now
                     # Reset flags and arrays
@@ -482,7 +488,7 @@ try:
 
                 try:
                     # Check if timeout counter is reached
-                    if timeout_counter > max_timeout_counter:
+                    if timeout_counter > max_inactivity_timeout and max_inactivity_timeout != -1:
                         clientsocket_send.close()
                         raise ConnectionResetError( "ACHTUNG: No data received from client for too long, disconnecting...")
                     
@@ -499,13 +505,17 @@ try:
 
 
                 except BlockingIOError:
-                    if not DEBUG_MODE:
-                        print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_timeout_counter-timeout_counter)} [s]...")                
+                    
+                    if not DEBUG_MODE and max_inactivity_timeout != -1:
+                        print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_inactivity_timeout - timeout_counter)} [s]...")    
+
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
                     data_buffer = None
-                    if not DEBUG_MODE:
+
+                    if not DEBUG_MODE and max_inactivity_timeout != -1:
                         timeout_counter += 1
+
                     sleep(0.5) 
                     continue  
 
@@ -567,7 +577,6 @@ try:
             clientsocket_send.close()
             TCPsendSocket.close()
             sys.exit(1) 
-
 
         # Casting to numpy array
         dtype = np.dtype(np.float64)  # Big-endian float64
@@ -633,6 +642,16 @@ try:
             if (numpy_data_array_prev == numpy_data_array).all():
                 raise RuntimeError("ACHTUNG: data freshness check failed. Server received same data as previous communication. Execution stop: closing connection to client.")
         try:
+                
+            # Define number of channels
+            if n_channels == 3 or n_channels == 4:
+                num_img_array_channels = 4
+            elif n_channels == 1:
+                num_img_array_channels = 1
+            else: 
+                raise ValueError("ACHTUNG: Number of channels must be 1 or 3! Found: {}".format(n_channels))
+
+
             if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
                 Render(ii) # Render function call, uses data set by PositionAll
                 #data_freshness_flag = False # Set freshness data to false
@@ -645,19 +664,40 @@ try:
                 # Read the pixels from the saved image
                 img_read = bpy.data.images.load(filepath=os.path.join(output_imgs_path, '{:06d}.{}'.format(int(ii), img_format)))
 
-                # FIXME: image is RGB regardless of the color mode set in the config file!
-
                 # Get the type of the first pixel value
                 pixel_dtype = type(img_read.pixels[0])
-                print(f"\tImage datatype: {pixel_dtype}")
-                
-                # Convert to a NumPy array using the same type
-                img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the image matrix to a linear array
+                print(f"\tImage datatype from bpy: {pixel_dtype}")
+                                
+                # Convert to grayscale if n_channels == 1
+                if num_img_array_channels == 1:
+                    # TODO, need to test
+                    # Get size and raw pixels
+                    w, h = img_read.size
+
+                    # Blender always stores pixels as a flat list of floats in RGBA order, even if the file was RGB or BW:
+                    #    img.pixels[:]  → length = w * h * 4
+                    pixels_flat = np.array(img_read.pixels[:], dtype=np.float32)
+                    pixels_rgba = pixels_flat.reshape((h, w, 4))
+
+                    img_read = (
+                        0.299 * pixels_rgba[:, :, 0] +
+                        0.587 * pixels_rgba[:, :, 1] +
+                        0.114 * pixels_rgba[:, :, 2]
+                    )
+
+                    # Reshape numpy array
+                    img_reshaped_vec = img_read.flatten()
+
+                else:
+                    # Convert to a NumPy array using the same type
+                    img_reshaped_vec = np.array(img_read.pixels[:]) # Flatten the image matrix to a linear array
+
                 print(f"\tImage datatype interpreted by numpy: {img_reshaped_vec.dtype}")
 
             else:
                 # DOUBT: why 4 channels if Blender is using 3 (RGB) for rendering? Set in bpy.context.scene.render.image_settings.color_mode property
-                img_reshaped_vec = np.float64(np.random.rand(4*sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
+
+                img_reshaped_vec = np.float64(np.random.rand(num_img_array_channels * sensor_size_x * sensor_size_y)).flatten() # Random image for testing (4 is because of RGBA)
 
             # Pack the RGBA image as vector and transmit over TCP using numpy
             img_pack = img_reshaped_vec.tobytes() # DEVNOTE: which endianness here? # TODO add specification in config file! 
@@ -680,12 +720,16 @@ try:
             # Disconnect the client
             clientsocket_send.close()
             bytes_recv_udp = 0
-
             continue
 
         except FileNotFoundError as e:
             print(f'Error while attempting to fetch file: {e}')
             continue
+
+        except ValueError as e:
+            print(f"ValueError while attempting to send image: {e}. Closing server...")
+            sys.exit(0)
+
 
         print("Image sent correctly.\n")
         

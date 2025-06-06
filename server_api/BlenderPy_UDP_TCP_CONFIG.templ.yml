@@ -12,7 +12,7 @@ Camera_params:
   n_channels: 3  # [-], Number of channels of the images
   # n_channels_output: 1 # [-], Number of channels of the image to send
   bit_encoding: 8  # [-], Number of bits per pixel
-  compression: 5  # [-], Compression factor
+  compression: 15  # [-], Compression factor
 
 RenderingEngine_params:
   file_format: 'PNG'  # File format for the images or 'OPEN_EXR' for floating point
@@ -32,7 +32,7 @@ BlenderModel_params:
 
 Server_params:
   output_path: "/media/peterc/Main/linux_data/datasets/TrajectoriesDatasets/TestCase_ItokawaAsApophis_RCS1_RTO_4t1_J11p0_1dt_0p00347222days"
-
+  max_inactivity_timeout: 1000 # [s]
 
  # Where Blender will save images
   address: "127.0.0.1"
