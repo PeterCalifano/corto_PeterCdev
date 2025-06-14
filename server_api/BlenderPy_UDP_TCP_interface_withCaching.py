@@ -234,7 +234,7 @@ try:
     # Check if output_path exists, if not create it
     if not os.path.exists(output_path):
         print('Output path does not exist. Creating it...')
-        os.makedirs(output_path)
+        os.makedirs(output_path, exist_ok=False)
     else:
         # If it exists, check if it contains a file named "000001.png" and modify output path to avoid overwriting
         image_test_path = os.path.join(output_path, "images", "000001.png")
@@ -242,14 +242,14 @@ try:
 
         if os.path.exists(image_test_path) or os.path.exists(image_test_path_legacy):
             counter = 0
-            new_output_path = f"{output_path}_{counter:02d}"
+            new_output_path = f"{output_path}_ID{counter:01d}"
             # Keep incrementing the counter until we find a folder that does not contain a "000000.png" file
             while os.path.exists(new_output_path) and \
                 os.path.exists(os.path.join(new_output_path, "000000.png")) and \
                 os.path.exists(os.path.join(new_output_path, "images", "000001.png")):
 
                 counter += 1
-                new_output_path = f"{output_path}_{counter:02d}"
+                new_output_path = f"{output_path}_ID{counter:01d}"
 
             print(f'Found file pattern 000001.png in {output_path} or {os.path.join(output_path, "images")}.\n'
                   f'Changing output path to {new_output_path}')
