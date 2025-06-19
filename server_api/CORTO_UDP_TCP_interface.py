@@ -184,8 +184,7 @@ try:
     port_M2B = server_config.get("port_M2B")  # Port from Matlab to Blender
     port_B2M = server_config.get("port_B2M")  # Port from Blender to Matlab
     DUMMY_OUTPUT = server_config.get("DUMMY_OUTPUT")  # Flag to use dummy output
-    tcpTimeOutValue = 120 # [s]
-    tcpTimeOutValue = 120 # [s]
+    tcpTimeOutValue = 500 # [s]
 
     print('Parameters loaded successfully!\n')
     # Check if output_path exists, if not create it
@@ -340,7 +339,7 @@ try:
     disconnect_flag = False
     bytes_recv_udp = 0
     numpy_data_array_prev = None
-    max_timeout_counter = 0.5*120*2 # approx. 120 seconds of no data before closing the server
+    max_timeout_counter = 0.5*1000*2 # approx. 120 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
 
