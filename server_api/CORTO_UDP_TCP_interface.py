@@ -160,6 +160,9 @@ try:
     bpy.context.scene.cycles.tile_size = rendering_engine_config.get(
         "tile_size")
 
+    # Flag to decide if to skip body assignment in Blender when unchanged
+    enable_body_pose_caching = rendering_engine_config.get("enable_body_pose_caching", False)
+
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
     num_bodies = blender_model_config.get("num_bodies")
@@ -268,6 +271,8 @@ try:
     SUN.rotation_quaternion = [1, 0, 0, 0]
     print('OK')
 
+    PQ_Bodies_prev = np.tile(A=[0, 0, 0, 1, 0, 0, 0], reps=(1, num_bodies))
+
     print('Defining rendering functions...', end='')
     # TODO (PC) declare these functions at the beginning of the script
     # TODO (PC) wrap the relevant code in the main program
@@ -278,24 +283,30 @@ try:
         bpy.ops.render.render(write_still=1)
         return
 
-    def PositionAll(PQ_SC,PQ_Bodies,PQ_Sun):
+    def PositionAll(PQ_SC, PQ_Bodies, PQ_Sun, body_has_changed: bool = True, disable_caching: bool = True) -> None:
 
-        # TODO function to rework, generalize and make more readable
         # Add also a check on the quaternions (must be unit quaternions)
-        
-        SUN.location = [0,0,0] # Because in Blender it is indifferent where the sun is located
+        print('Setting Light and Camera poses...')
+        # Because in Blender it is indifferent where the sun is located
+        SUN.location = [0, 0, 0]
         CAM.location = [PQ_SC[0], PQ_SC[1], PQ_SC[2]]
-        BODY_1.location = [PQ_Bodies[0,0],PQ_Bodies[0,1],PQ_Bodies[0,2]]
 
-        if num_bodies > 1:
-            BODY_2.location = [PQ_Bodies[1,0],PQ_Bodies[1,1],PQ_Bodies[1,2]]
+        if body_has_changed or disable_caching:
+            print("Setting bodies' poses...")
+            BODY_1.location = [PQ_Bodies[0, 0], PQ_Bodies[0, 1], PQ_Bodies[0, 2]]
+            BODY_1.rotation_quaternion = [
+                PQ_Bodies[0, 3], PQ_Bodies[0, 4], PQ_Bodies[0, 5], PQ_Bodies[0, 6]]
+
+            if num_bodies > 1:
+                BODY_2.location = [PQ_Bodies[1, 0],
+                                   PQ_Bodies[1, 1], PQ_Bodies[1, 2]]
+                BODY_2.rotation_quaternion = [
+                    PQ_Bodies[1, 3], PQ_Bodies[1, 4], PQ_Bodies[1, 5], PQ_Bodies[1, 6]]
+        else:
+            print("Bodies' poses did not change. Kept still.")
 
         SUN.rotation_quaternion = [PQ_Sun[3], PQ_Sun[4], PQ_Sun[5], PQ_Sun[6]]
         CAM.rotation_quaternion = [PQ_SC[3], PQ_SC[4], PQ_SC[5], PQ_SC[6]]
-        BODY_1.rotation_quaternion = [PQ_Bodies[0,3], PQ_Bodies[0,4], PQ_Bodies[0,5], PQ_Bodies[0,6]]
-
-        if num_bodies > 1:
-            BODY_2.rotation_quaternion = [PQ_Bodies[1,3], PQ_Bodies[1,4], PQ_Bodies[1,5], PQ_Bodies[1,6]]
 
         return
     print('OK')
@@ -342,6 +353,7 @@ try:
     max_timeout_counter = 0.5*1000*2 # approx. 120 seconds of no data before closing the server
     timeout_counter = 0
     ii = 0
+    body_has_changed = True  # Flag to indicate if body pose has changed
 
     # TODO (PC) server management to be improved (error handling to avoid server crashes in certain cases)
     while receiving_flag:
@@ -476,17 +488,39 @@ try:
         PQ_Sun = numpy_data_array[0:7]
         PQ_SC = numpy_data_array[7:14]
         PQ_Bodies = numpy_data_array[14:]
-        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7)) # TODO check this operation is performed correctly
+        PQ_Bodies = np.reshape(PQ_Bodies,(int(n_bodies),7))
+
+        # Check if the bodies' poses have changed
+        if numpy_data_array_prev is not None:
+            if (PQ_Bodies == PQ_Bodies_prev).all() and enable_body_pose_caching:
+                body_has_changed = False
+            else:
+                body_has_changed = True
+        else:
+            body_has_changed = True
 
         # Print the PQ vector info
         print('SUN:   POS ' +  str(PQ_Sun[0:3]) + ' - Q ' + str(PQ_Sun[3:7]))
         print('SC:    POS ' +  str(PQ_SC[0:3]) + ' - Q ' + str(PQ_SC[3:7]))
+        if enable_body_pose_caching:
+            if body_has_changed:
+                print("Bodies' poses changed. Scene was updated.")
+            else:
+                print("Static scene detected. Bodies' poses did not change and were not updated.")
+        else:
+            print("Bodies' poses caching is disabled. Scene was updated regardless of the bodies' poses.")
+            
+        print('Previous poses: ', PQ_Bodies_prev)
 
         for jj in np.arange(0,n_bodies):
             print('BODY (' + str(jj) + '):   POS: ' +  str(PQ_Bodies[int(jj),0:3]) + ' - Q ' + str(PQ_Bodies[int(jj),3:7]))
 
         # Position all bodies in the scene
-        PositionAll(PQ_SC,PQ_Bodies,PQ_Sun)
+        PositionAll(PQ_SC,
+                    PQ_Bodies,
+                    PQ_Sun, 
+                    body_has_changed=body_has_changed,
+                    disable_caching=not(enable_body_pose_caching))
 
         # Check data freshness
         if numpy_data_array_prev is not None:
@@ -495,7 +529,9 @@ try:
 
         # Copy sent bytes for error checking # FIXME, not sure this is working as intended
         numpy_data_array_prev = copy.deepcopy(numpy_data_array)
-        
+        # Store the previous PQ_Bodies for next scene
+        PQ_Bodies_prev = copy.deepcopy(PQ_Bodies)
+
         try:
             if not DUMMY_OUTPUT: # DEVNOTE: DUMMY_OUTPUT is a flag to test the server without rendering
                 Render(ii) # Render function call, uses data set by PositionAll
