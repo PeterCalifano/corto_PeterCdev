@@ -370,6 +370,17 @@ try:
     # TODO (PC) wrap the relevant code in the main program
     #### (4) FUNCTION DEFINITIONS ####
 
+    ### Disable denoiser (workound for blender 4.0.2 on Ubuntu)
+
+    # Disable render denoising (Cycles)
+    #bpy.context.scene.cycles.use_denoising = False
+    #scene = bpy.context.scene
+    #tree = scene.node_tree
+    #for node in tree.nodes:
+    #    if node.type == "DENOISE":
+    #        node.mute = True  # or node.select = True; tree.nodes.remove(node)
+    ###
+
     def Render(ii) -> None:
 
         # Filenames definition
