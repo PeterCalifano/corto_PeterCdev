@@ -9,6 +9,8 @@ usage() {
     exit 1
 }
 
+set -euo pipefail
+
 # NAVCAM_HF_1_a
 # -------------
 # blender -b ../milani-input/Blender/Didymos_AB_crater.blend -P script/CORTO_interfaces/CORTO_interface_HF_1_a.py
