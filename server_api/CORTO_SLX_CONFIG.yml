@@ -5,8 +5,8 @@
 # Author: Peter C., Date: 12 Jan 2025
 
 NavCam_params:
-  FOV_x: 19.72  # [deg], Horizontal FOV of the NAVCAM
-  FOV_y: 14.86  # [deg], Vertical FOV of the NAVCAM
+  FOV_x: 32  # [deg], Horizontal FOV of the NAVCAM
+  FOV_y: 24  # [deg], Vertical FOV of the NAVCAM
   sensor_size_x: 2048  # [pxl], Horizontal resolution of the images
   sensor_size_y: 1536  # [pxl], Vertical resolution of the images
   n_channels: 3  # [-], Number of channels of the images
@@ -15,7 +15,7 @@ NavCam_params:
 
 RenderingEngine_params:
   render_engine: 'CYCLES'
-  device: 'GPU'  # 'CPU' or 'GPU'
+  device: 'CPU'  # 'CPU' or 'GPU'
   samples: 4  # Number of samples
   diffuse_bounces: 0  # To avoid diffused light from D1 to D2. (4 default)
   tile_size: 512  # Tile size for rendering 
