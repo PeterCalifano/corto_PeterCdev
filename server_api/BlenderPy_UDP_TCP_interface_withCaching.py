@@ -193,9 +193,6 @@ try:
 
     # SERVER PARAMS
     max_inactivity_timeout = server_config["max_inactivity_timeout"] # Set server timeout counter from configuration 
-    
-    # Setup mask generation 
-    # TODO
 
     # BLENDER MODEL
     # Number of bodies # TODO (PC) now used only for assert, generalize to support any number of bodies (replace model_name with dict)
@@ -530,7 +527,7 @@ try:
                 except BlockingIOError:
                     
                     if not DEBUG_MODE and max_inactivity_timeout != -1:
-                        print(f"BlockingIOError: No data received yet. Waiting for other {0.5 * (max_inactivity_timeout - timeout_counter)} [s]...")    
+                        print(f"BlockingIOError: No data received yet. Waiting for other {max_inactivity_timeout - timeout_counter} [s]...")    
 
                     # Socket is open and reading from it would block, do nothing
                     bytes_recv_udp = 0
@@ -539,7 +536,7 @@ try:
                     if not DEBUG_MODE and max_inactivity_timeout != -1:
                         timeout_counter += 1
 
-                    sleep(0.5) 
+                    sleep(1.0) 
                     continue  
 
                 #if exists(data_buffer):
