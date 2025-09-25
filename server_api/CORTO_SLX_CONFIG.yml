@@ -15,10 +15,10 @@ NavCam_params:
 
 RenderingEngine_params:
   render_engine: 'CYCLES'
-  device: 'CPU'  # 'CPU' or 'GPU'
+  device: 'GPU'  # 'CPU' or 'GPU'
   samples: 4  # Number of samples
   diffuse_bounces: 0  # To avoid diffused light from D1 to D2. (4 default)
-  tile_size: 512  # Tile size for rendering 
+  tile_size: 256  # Tile size for rendering 
   enable_body_pose_caching: True  # Skip body assignment in Blender if unchanged, useful for static models
 
 BlenderModel_params:
