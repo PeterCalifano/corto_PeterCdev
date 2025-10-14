@@ -3,41 +3,27 @@
 # Function to display an error message and usage
 usage() {
     echo "Usage: $0 -m <model_path> -p <python_script>"
+    echo "  -b    Path to the Blender executable (default is \$BLENDPATH/blender)"
     echo "  -m    Path to the Blender model file (.blend)"
     echo "  -p    Path to the Python script file (.py)"
-    echo "  -f    Run Blender in the foreground (optional)"
+    echo "  -k    Flag to keep process in shell (default is false)"
     exit 1
 }
 
 set -euo pipefail
 
-# NAVCAM_HF_1_a
-# -------------
-# blender -b ../milani-input/Blender/Didymos_AB_crater.blend -P script/CORTO_interfaces/CORTO_interface_HF_1_a.py
-# -------------
-
-# NAVCAM_HF_1_b
-# -------------
-# blender ../milani-input/Blender/Didymos_AB_crater.blend -P script/CORTO_interfaces/CORTO_interface_HF_1_b.py
-# -------------
-
-# NAVCAM_HF_1_c
-# -------------
-# blender -b ../milani-input/Blender/Didymos_AB_crater.blend -P script/CORTO_interfaces/CORTO_interface_HF_1_c.py
-# -------------
-
-# NAVCAM_HF_1_d
-# -------------
-#blender -b ../milani-input/Blender/Didymos_AB_crater_RGB.blend -P script/CORTO_interfaces/CORTO_interface_HF_1_d.py
-# -------------
+KEEP_SHELL_BUSY=0
+LOG_FILE_OUT=""
+blender_bin=$BLENDPATH/blender
 
 # Parse command-line arguments
-FOREGROUND_RUN=0 # Default: run Blender in the background
 while getopts "m:p:f" opt; do
     case $opt in
+        b) blender_bin="$OPTARG" ;;
         m) MODEL_PATH="$OPTARG" ;;
         p) PYTHON_SCRIPT="$OPTARG" ;;
-        f) FOREGROUND_RUN=1 ;;
+        k) KEEP_SHELL_BUSY=1;;
+        l) LOG_FILE_OUT="$OPTARG" ;;
         *) usage ;;
     esac
 done
@@ -59,9 +45,32 @@ if [[ ! -f "$PYTHON_SCRIPT" ]]; then
     exit 1
 fi
 
-# Execute Blender with the provided paths
-if [[ "$FOREGROUND_RUN" -eq 1 ]]; then
-    blender --log-level 3 $MODEL_PATH -P $PYTHON_SCRIPT
+
+if [[ $KEEP_SHELL_BUSY -eq 1 ]]; then
+    # Execute Blender with the provided paths
+    "$blender_bin" --log-level 3 -b "$MODEL_PATH" -P "$PYTHON_SCRIPT"
+    exit 0
 else
-    blender --log-level 3 -b $MODEL_PATH -P $PYTHON_SCRIPT
+    blender_path=$(which blender)
+    clear
+    # TODO extend to log to file
+    #exec > >(tee -a "$LOG_FILE_OUT") 2>&1 # DEVNOTE: all outs are written to file. MATLAB won't get anything back this way.
+
+    # Execute Blender with the provided paths in the background and return PID
+    "$blender_bin" --log-level 3 -b "$MODEL_PATH" -P "$PYTHON_SCRIPT" > /dev/null 2>&1 &
+
+    if [[ $blender_path == *"snap"* ]]; then
+        # If exec is under snap, return bpy_pid of child process
+        bpy_wrapper_pid=$!
+        sleep 1.0 # Give it a second to start
+        bpy_pid=$(pgrep -P $bpy_wrapper_pid);
+        # Echo all PIDS
+        echo "$bpy_pid"
+    else
+        # If exec is not under snap, return bpy_pid of parent process
+        bpy_pid=$!
+        echo "$bpy_pid"
+    fi
+    exit 0
 fi
+
