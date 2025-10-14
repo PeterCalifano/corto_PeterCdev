@@ -234,8 +234,8 @@ try:
     print('Setting up scene.render properties...', end='')
     bpy.context.scene.render.pixel_aspect_x = 1
     bpy.context.scene.render.pixel_aspect_y = 1
-    bpy.context.scene.render.resolution_x = sensor_size_x # CAM resolution (x)
-    bpy.context.scene.render.resolution_y = sensor_size_y # CAM resolution (y)
+    bpy.context.scene.render.resolution_x = int(sensor_size_x) # CAM resolution (x)
+    bpy.context.scene.render.resolution_y = int(sensor_size_y) # CAM resolution (y)
     print('OK')
 
     # Light parameters    
