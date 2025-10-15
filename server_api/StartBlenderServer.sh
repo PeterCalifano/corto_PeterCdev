@@ -10,14 +10,17 @@ usage() {
     exit 1
 }
 
-set -euo pipefail
+set -Euo pipefail
 
 KEEP_SHELL_BUSY=0
 LOG_FILE_OUT=""
 blender_bin=$BLENDPATH/blender
+MODEL_PATH=""
+PYTHON_SCRIPT=""
+echo "Using blender binary: $blender_bin"
 
 # Parse command-line arguments
-while getopts "m:p:f" opt; do
+while getopts "b:m:p:kl" opt; do
     case $opt in
         b) blender_bin="$OPTARG" ;;
         m) MODEL_PATH="$OPTARG" ;;
