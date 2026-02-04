@@ -47,8 +47,7 @@ TCP_TIMEOUT_SECONDS = 300
 
 # -----------------------------------------------------------------------------
 # Shared helpers
-# -----------------------------------------------------------------------------
-def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Standalone UDP/TCP server that offloads rendering to Blender.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
